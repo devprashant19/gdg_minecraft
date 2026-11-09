@@ -6,6 +6,7 @@ import { useFrame } from '@react-three/fiber';
 import { Sparkles } from '@react-three/drei';
 import { useGame, SectionId } from '@/lib/store';
 import { TIER_CONFIGS } from '@/lib/quality';
+import { playPortalWarp } from '@/lib/sound';
 
 interface PortalProps {
   position?: [number, number, number];
@@ -78,8 +79,10 @@ void main() {
     color = vec3(gray * 0.5);
   }
 
-  // Alpha edge falloff inside the portal frame
-  float edgeAlpha = smoothstep(0.5, 0.42, dist);
+  // Rectangular edge falloff inside the portal frame
+  vec2 d = abs(center);
+  float boxDist = max(d.x, d.y);
+  float edgeAlpha = smoothstep(0.5, 0.48, boxDist);
   gl_FragColor = vec4(color, edgeAlpha * 0.92);
 }
 `;
@@ -90,7 +93,7 @@ const portalUniforms = {
   uReducedMotion: { value: 0.0 },
 };
 
-export function Portal({ position = [0, 5.0, 0], isClosed = false }: PortalProps) {
+export function Portal({ position = [0, 5.0, 2], isClosed = false }: PortalProps) {
   const open = useGame((s) => s.open);
   const qualityTier = useGame((s) => s.qualityTier);
   const reducedMotion = useGame((s) => s.reducedMotion);
@@ -108,26 +111,34 @@ export function Portal({ position = [0, 5.0, 0], isClosed = false }: PortalProps
       {/* Obsidian Frame */}
       <group>
         {/* Left pillar */}
-        <mesh position={[-1.2, 0, 0]} castShadow>
-          <boxGeometry args={[0.5, 3.2, 0.5]} />
-          <meshStandardMaterial color="#1a1423" roughness={0.3} metalness={0.2} />
+        <mesh position={[-1.15, 1.75, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.6, 3.5, 0.6]} />
+          <meshStandardMaterial color="#150d21" roughness={0.3} metalness={0.2} />
         </mesh>
         {/* Right pillar */}
-        <mesh position={[1.2, 0, 0]} castShadow>
-          <boxGeometry args={[0.5, 3.2, 0.5]} />
-          <meshStandardMaterial color="#1a1423" roughness={0.3} metalness={0.2} />
+        <mesh position={[1.15, 1.75, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.6, 3.5, 0.6]} />
+          <meshStandardMaterial color="#150d21" roughness={0.3} metalness={0.2} />
         </mesh>
         {/* Top arch */}
-        <mesh position={[0, 1.6, 0]} castShadow>
-          <boxGeometry args={[2.9, 0.5, 0.5]} />
-          <meshStandardMaterial color="#1a1423" roughness={0.3} metalness={0.2} />
+        <mesh position={[0, 3.2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[2.9, 0.6, 0.6]} />
+          <meshStandardMaterial color="#150d21" roughness={0.3} metalness={0.2} />
+        </mesh>
+        {/* Bottom sill */}
+        <mesh position={[0, 0.3, 0]} castShadow receiveShadow>
+          <boxGeometry args={[2.9, 0.6, 0.6]} />
+          <meshStandardMaterial color="#150d21" roughness={0.3} metalness={0.2} />
         </mesh>
       </group>
 
       {/* Swirling Vortex Energy Surface */}
       <mesh
-        position={[0, 0, 0]}
-        onClick={() => open('register' as SectionId)}
+        position={[0, 1.75, 0]}
+        onClick={() => {
+          playPortalWarp();
+          open('register' as SectionId);
+        }}
         onPointerOver={() => {
           document.body.style.cursor = 'pointer';
         }}
@@ -135,7 +146,7 @@ export function Portal({ position = [0, 5.0, 0], isClosed = false }: PortalProps
           document.body.style.cursor = 'default';
         }}
       >
-        <planeGeometry args={[2.0, 2.8]} />
+        <planeGeometry args={[1.7, 2.3]} />
         <shaderMaterial
           vertexShader={portalVertexShader}
           fragmentShader={portalFragmentShader}
@@ -151,6 +162,7 @@ export function Portal({ position = [0, 5.0, 0], isClosed = false }: PortalProps
       <Sparkles
         count={sparklesCount}
         scale={[2.4, 3.2, 1.2]}
+        position={[0, 1.75, 0]}
         speed={reducedMotion ? 0.1 : 0.5}
         color="#c58bff"
         size={3}

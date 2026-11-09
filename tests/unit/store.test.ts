@@ -18,6 +18,7 @@ describe('Zustand Game Store', () => {
       soundOn: false,
       reducedMotion: false,
       tourSeen: false,
+      mouseAimLocked: false,
     });
   });
 

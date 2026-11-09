@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from 'react';
 import { useGame, SectionId } from '@/lib/store';
 import { stations } from '@/content/stations';
 import { isTypingTarget } from '@/lib/typing-guard';
+import { playClick } from '@/lib/sound';
 
 export function Hotbar() {
   const nearbyStation = useGame((s) => s.nearbyStation);
@@ -21,6 +22,7 @@ export function Hotbar() {
       if (num >= 1 && num <= 9) {
         const target = stations.find((s) => s.hotbarSlot === num);
         if (target) {
+          playClick();
           travelTo(target.id as SectionId);
         }
       }
@@ -60,7 +62,10 @@ export function Hotbar() {
               ref={(el) => {
                 buttonsRef.current[index] = el;
               }}
-              onClick={() => travelTo(s.id as SectionId)}
+              onClick={() => {
+                playClick();
+                travelTo(s.id as SectionId);
+              }}
               onKeyDown={(e) => handleKeyDownToolbar(e, index)}
               aria-label={`Slot ${s.hotbarSlot}: Go to ${s.label}`}
               title={`${s.label} (${s.hotbarSlot})`}

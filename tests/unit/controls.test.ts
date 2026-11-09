@@ -19,6 +19,7 @@ describe('Phase 2: Character Controls & Player Rules', () => {
       soundOn: false,
       reducedMotion: false,
       tourSeen: false,
+      mouseAimLocked: false,
     });
   });
 
@@ -64,3 +65,4 @@ describe('Phase 2: Character Controls & Player Rules', () => {
     expect(isTypingTarget(null)).toBe(false);
   });
 });
+
