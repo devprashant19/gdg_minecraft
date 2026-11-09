@@ -59,6 +59,7 @@ export function Player() {
   const footstepTimer = useRef(0);
   const isGroundedRef = useRef(true);
   const ctrlDownTime = useRef(0);
+  const jumpCooldown = useRef(0);
 
   // Homecraft Camera Rig smoothed state
   const cameraYaw = useRef(0); // 0 = viewing towards -Z (North into island)
@@ -81,6 +82,13 @@ export function Player() {
       );
       bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       setIsFlying(false);
+      yawGoal.current = 0;
+      pitchGoal.current = 0.24;
+      cameraYaw.current = 0;
+      cameraPitch.current = 0.24;
+      cameraDist.current = 5.2;
+      distGoal.current = 5.2;
+      focus.current.set(SPAWN_POSITION[0], SPAWN_POSITION[1] + 1.25, SPAWN_POSITION[2]);
     }
   }, [setIsFlying]);
 
@@ -221,32 +229,9 @@ export function Player() {
         return;
       }
 
-      // Space key: Double-tap detection for Creative Flight toggle.
-      // BUG FIX: If grounded, spamming space MUST NOT trigger flight! Jumping on the ground
-      // is standard Minecraft bunny-hopping. Double-tap fly only triggers when airborne or already flying.
-      if (e.code === 'Space' && !e.repeat) {
-        const flying = useGame.getState().isFlying;
-        const now = performance.now();
-        if (flying) {
-          // If already flying, double-tap Space lands
-          if (now - lastSpaceTime.current < 250) {
-            lastSpaceTime.current = -1e9;
-            setIsFlying(false);
-            playFlyToggle(false);
-          } else {
-            lastSpaceTime.current = now;
-          }
-        } else {
-          // On ground or jumping: ONLY enter flight if double-tapped while in MIDAIR (airborne) < 220ms
-          if (!isGroundedRef.current && now - lastSpaceTime.current < 220) {
-            lastSpaceTime.current = -1e9;
-            setIsFlying(true);
-            playFlyToggle(true);
-          } else {
-            lastSpaceTime.current = now;
-          }
-        }
-      }
+      // Space key: Only triggers jumping on ground.
+      // Deliberately REMOVED double-space flight trigger so spamming jump
+      // NEVER causes accidental flight! Flight is toggled exclusively via F key or HUD button.
 
       keys.current[e.code] = true;
 
@@ -317,8 +302,8 @@ export function Player() {
       visualRef.current.visible = !isFirstPerson;
     }
 
-    // 1. Fall-off Island Respawn Guard
-    if (pos.y < -5) {
+    // 1. Fall-off Island or Cloud Void Respawn Guard
+    if (pos.y < -5 || pos.y > 55 || Number.isNaN(pos.y)) {
       respawn();
       return;
     }
@@ -422,11 +407,29 @@ export function Player() {
     }
 
     // 4. Grounded Detection using Rapier Raycast
-    const rayOrigin = { x: pos.x, y: pos.y - 0.5, z: pos.z };
+    // Player capsule center is at pos.y, radius 0.3, half-height 0.5.
+    // Total extent from center is pos.y - 0.8 at bottom.
+    // We cast a ray from pos.y - 0.2 downward.
+    // The player's own rigid body is strictly excluded so the ray never hits the player capsule.
+    if (jumpCooldown.current > 0) {
+      jumpCooldown.current -= delta;
+    }
+
+    const rayOrigin = { x: pos.x, y: pos.y - 0.2, z: pos.z };
     const rayDir = { x: 0, y: -1, z: 0 };
     const ray = new rapier.Ray(rayOrigin, rayDir);
-    const hit = world.castRay(ray, 0.45, true);
-    const isGrounded = !!hit;
+    // 0.60m from pos.y - 0.2 to feet (pos.y - 0.8). Ray length 0.78m allows 0.18m ground clearance.
+    const hit = world.castRay(
+      ray,
+      0.78,
+      false,
+      undefined,
+      undefined,
+      undefined,
+      bodyRef.current || undefined,
+      (collider) => collider.parent() !== bodyRef.current
+    );
+    const isGrounded = jumpCooldown.current <= 0 && !!hit;
     isGroundedRef.current = isGrounded;
 
     // Landing sound detection
@@ -524,14 +527,13 @@ export function Player() {
     // 8. Flight Kinematics vs Ground Jump Kinematics
     if (isFlying) {
       // Creative Flight: vertical climb and descent
-      const isFast = isRunning || keys.current['ShiftLeft'] || keys.current['ShiftRight'];
-      const isCtrlDown = keys.current['ControlLeft'] || keys.current['ControlRight'] || keys.current['KeyC'];
-      const isShiftDescend = (keys.current['ShiftLeft'] || keys.current['ShiftRight']) && !keys.current['KeyW'];
+      const isShift = keys.current['ShiftLeft'] || keys.current['ShiftRight'];
+      const isCtrl = keys.current['ControlLeft'] || keys.current['ControlRight'] || keys.current['KeyC'];
 
       if (keys.current['Space']) {
-        vy = isFast ? 24.0 : 15.0; // CLIMB UP
-      } else if (isCtrlDown || isShiftDescend) {
-        vy = isFast ? -24.0 : -15.0; // DESCEND DOWN (via Ctrl, Shift, or C)
+        vy = 18.0; // CLIMB UP
+      } else if (isShift || isCtrl) {
+        vy = -18.0; // DESCEND DOWN (via Shift, Ctrl, or C) - works whether moving or still!
         // Auto-land if player touches solid ground while descending
         if (isGrounded && pos.y < 9.0) {
           setIsFlying(false);
@@ -544,12 +546,18 @@ export function Player() {
     } else {
       // Standard Ground Physics: Authentic Minecraft gravity and jumping
       if (keys.current['Space'] && isGrounded && linvel.y <= 0.8) {
-        // Crisp 8.8 m/s vertical impulse clearing 1.35m blocks with 0.6s snappy arc
-        vy = 8.8;
+        // Crisp 8.5 m/s impulse: height 1.15m, tight 0.45s airtime
+        vy = 8.5;
+        jumpCooldown.current = 0.22; // Lock grounded state for 220ms so jump achieves full height without re-triggering
         playJump();
-      } else if (isGrounded && !keys.current['Space'] && linvel.y <= 0) {
-        // Ground snap / adherence: prevents bouncy skipping when running down block terraces
-        vy = -1.5;
+      } else if (isGrounded && !keys.current['Space']) {
+        // Ground snap / adherence: keeps player firmly grounded on downhill terraces
+        vy = -2.0;
+      } else if (!isGrounded) {
+        // Explicit delta-based gravity: 34 m/s^2 on rise, 48 m/s^2 on fall
+        // Guarantees snappy 0.45s jump airtime with immediate weighted descent!
+        const gravity = vy > 0 ? 34.0 : 48.0;
+        vy = Math.max(-28.0, vy - gravity * delta);
       }
     }
 
@@ -610,8 +618,8 @@ export function Player() {
       colliders={false}
       enabledRotations={[false, false, false]}
       ccd={true}
-      gravityScale={isFlying ? 0 : 1}
-      linearDamping={0.3}
+      gravityScale={0}
+      linearDamping={0.0}
       name="player"
     >
       <CapsuleCollider args={[0.5, 0.3]} friction={0.1} restitution={0.0} name="player" />
