@@ -40,6 +40,7 @@ export function Island({ seed = 1337 }: IslandProps) {
       baseMaterial: THREE.MeshStandardMaterial,
       roughness: 0.95,
       metalness: 0.05,
+      vertexColors: true,
       uniforms: {
         uTiles: { value: tileTexture },
         uTime: islandUniforms.uTime,
@@ -52,9 +53,11 @@ export function Island({ seed = 1337 }: IslandProps) {
         uniform float uSwayScale;
         varying float vLayer;
         varying vec3 vAO;
+        varying vec2 vUv;
         void main() {
           vLayer = aLayer;
           vAO = color;
+          vUv = uv;
 
           vec3 p = position;
           if (aSway > 0.0) {
@@ -70,6 +73,7 @@ export function Island({ seed = 1337 }: IslandProps) {
         uniform sampler2DArray uTiles;
         varying float vLayer;
         varying vec3 vAO;
+        varying vec2 vUv;
         void main() {
           vec4 t = texture(uTiles, vec3(vUv, vLayer));
           csm_DiffuseColor = vec4(t.rgb * vAO, 1.0);
@@ -85,6 +89,7 @@ export function Island({ seed = 1337 }: IslandProps) {
       metalness: 0,
       alphaTest: 0.5,
       side: THREE.DoubleSide,
+      vertexColors: true,
       uniforms: {
         uTiles: { value: tileTexture },
         uTime: islandUniforms.uTime,
@@ -97,9 +102,11 @@ export function Island({ seed = 1337 }: IslandProps) {
         uniform float uSwayScale;
         varying float vLayer;
         varying vec3 vAO;
+        varying vec2 vUv;
         void main() {
           vLayer = aLayer;
           vAO = color;
+          vUv = uv;
 
           vec3 p = position;
           vec4 wp = modelMatrix * vec4(p, 1.0);
@@ -113,6 +120,7 @@ export function Island({ seed = 1337 }: IslandProps) {
         uniform sampler2DArray uTiles;
         varying float vLayer;
         varying vec3 vAO;
+        varying vec2 vUv;
         void main() {
           vec4 t = texture(uTiles, vec3(vUv, vLayer));
           if (t.a < 0.5) discard;
