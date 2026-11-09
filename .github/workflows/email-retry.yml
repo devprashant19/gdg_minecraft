@@ -1,0 +1,22 @@
+name: Email Retry Cron
+
+on:
+  schedule:
+    # Run daily at 04:30 UTC to retry unsent team confirmation emails
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  retry-emails:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Email Retry API Endpoint
+        env:
+          SITE_URL: ${{ secrets.SITE_URL || 'https://crafthacks.dev' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          echo "Triggering email retry endpoint..."
+          RESPONSE=$(curl -fsS -m 30 -X POST "$SITE_URL/api/cron/email-retry" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          echo "Response: $RESPONSE"
+

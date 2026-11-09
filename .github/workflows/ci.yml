@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Validate content schemas
+        run: pnpm check:content
+
+      - name: Run unit tests
+        run: pnpm test
+
+      - name: Build Next.js application
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://crafthacks.dev
+
+      - name: Verify no secrets in client bundle
+        run: "! grep -rE 'sb_secret_|service_role' .next/static"

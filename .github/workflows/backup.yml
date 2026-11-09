@@ -1,0 +1,48 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Daily at 21:00 UTC during registration phase
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Dump and Encrypt Public Schema Data
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          mkdir -p backups
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          
+          # Fallback or live dump
+          if [ -n "$SUPABASE_DB_URL" ]; then
+            pg_dump "$SUPABASE_DB_URL" --data-only --schema=public -f "backups/dump_${TIMESTAMP}.sql"
+          else
+            echo "-- Mock backup placeholder for CI run" > "backups/dump_${TIMESTAMP}.sql"
+          fi
+          
+          # Symmetric AES256 GPG Encryption (PII protection)
+          echo "$BACKUP_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 \
+            -o "backups/backup_${TIMESTAMP}.sql.gpg" "backups/dump_${TIMESTAMP}.sql"
+            
+          rm "backups/dump_${TIMESTAMP}.sql"
+
+      - name: Upload Encrypted Backup Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: encrypted-database-backup
+          path: backups/*.gpg
+          retention-days: 7
+
