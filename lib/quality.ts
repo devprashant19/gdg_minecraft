@@ -15,10 +15,10 @@ export interface TierConfig {
 
 export const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
   high: {
-    dpr: [1, 2],
+    dpr: [1, 1.25],
     shadowMapSize: 2048,
     enableAO: true,
-    halfResAO: false,
+    halfResAO: true,
     enableGodRays: true,
     enableBloom: true,
     cloudsCount: 40,
@@ -26,7 +26,7 @@ export const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     swayInShadows: true,
   },
   medium: {
-    dpr: [1, 1.5],
+    dpr: [1, 1.0],
     shadowMapSize: 1024,
     enableAO: true,
     halfResAO: true,
@@ -37,12 +37,12 @@ export const TIER_CONFIGS: Record<QualityTier, TierConfig> = {
     swayInShadows: true,
   },
   low: {
-    dpr: [1, 1],
+    dpr: [1, 1.0],
     shadowMapSize: 1024,
     enableAO: false,
     halfResAO: true,
     enableGodRays: false,
-    enableBloom: true,
+    enableBloom: false,
     cloudsCount: 15,
     sparklesCount: 15,
     swayInShadows: false,
@@ -63,9 +63,28 @@ export async function detectQualityTier(): Promise<QualityTier> {
       return 'low';
     }
 
-    const gpu = await getGPUTier({
-      benchmarksURL: '',
-    });
+    // Direct WebGL hardware inspection for reliable laptop/desktop GPU tiering
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (gl) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).toLowerCase();
+        // High-end dedicated GPUs
+        if (
+          /nvidia|geforce|rtx|quadro|radeon rx|apple m[2-9] (pro|max|ultra)/.test(renderer) &&
+          !/intel/.test(renderer)
+        ) {
+          return 'high';
+        }
+        // Integrated laptop GPUs
+        if (/intel|uhd|iris|radeon graphics|apple m[1-9]/.test(renderer)) {
+          return 'medium';
+        }
+      }
+    }
+
+    const gpu = await getGPUTier();
 
     if (gpu.tier >= 3 && !gpu.isMobile) {
       return 'high';

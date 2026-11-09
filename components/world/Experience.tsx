@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useRef, useSyncExternalStore } from 'react';
 import * as THREE from 'three';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { UIOverlay } from '@/components/ui/UIOverlay';
 import { DebugStats } from '@/components/ui/DebugOverlay';
@@ -16,6 +16,7 @@ import { Sky } from './Sky';
 import { Water } from './Water';
 import { Clouds } from './Clouds';
 import { Portal } from './Portal';
+import { DestinationMarker } from './DestinationMarker';
 import { PostProcessing } from './PostProcessing';
 import { stations } from '@/content/stations';
 import { useGame } from '@/lib/store';
@@ -37,7 +38,28 @@ function checkIsDebug(): boolean {
   return new URLSearchParams(window.location.search).has('debug');
 }
 
-export default function Experience() {
+/**
+ * Fires onRendered callback after the GPU has successfully rendered frames,
+ * guaranteeing all shaders and terrain meshes are compiled before lifting loading screen.
+ */
+function SceneReadyReporter({ onRendered }: { onRendered?: () => void }) {
+  const frameCount = useRef(0);
+  useFrame(() => {
+    if (frameCount.current < 5) {
+      frameCount.current++;
+      if (frameCount.current === 3 && onRendered) {
+        onRendered();
+      }
+    }
+  });
+  return null;
+}
+
+interface ExperienceProps {
+  onRendered?: () => void;
+}
+
+export default function Experience({ onRendered }: ExperienceProps) {
   const isDebug = useSyncExternalStore(() => () => {}, checkIsDebug, () => false);
   const setStage = useGame((s) => s.setStage);
   const tourSeen = useGame((s) => s.tourSeen);
@@ -82,7 +104,7 @@ export default function Experience() {
 
   return (
     <>
-      <div className="fixed inset-0 z-0 bg-[#f6c7a0]">
+      <div className="fixed inset-0 z-0 bg-[#4988e0] overflow-hidden">
         <Canvas
           flat
           shadows
@@ -95,14 +117,16 @@ export default function Experience() {
           }}
           onCreated={({ gl }) => {
             activeRenderer = gl;
-            // Static shadow map optimization: render shadows on demand rather than per frame
             gl.shadowMap.autoUpdate = false;
             gl.shadowMap.needsUpdate = true;
           }}
           frameloop={openSection ? 'demand' : 'always'}
           camera={{ fov: 55, near: 0.1, far: 400, position: [0, 6, 28] }}
-          style={{ touchAction: 'none' }}
+          style={{ width: '100vw', height: '100vh', touchAction: 'none' }}
         >
+          {/* Notify parent when scene has rendered frames */}
+          <SceneReadyReporter onRendered={onRendered} />
+
           {/* Synchronized Sky Dome, Fog & Atmosphere */}
           <color attach="background" args={[tod.horizon]} />
           <fog attach="fog" args={[tod.fogColor, 35, 180]} />
@@ -148,7 +172,10 @@ export default function Experience() {
             ))}
 
             {/* Ancient Obsidian Registration Portal at Center Island */}
-            <Portal position={[0, 4.0, 0]} />
+            <Portal position={[0, 5.0, 2]} />
+
+            {/* Click-to-Walk Ground Destination Marker */}
+            <DestinationMarker />
           </Physics>
 
           {/* Guided Tour Camera Controller */}

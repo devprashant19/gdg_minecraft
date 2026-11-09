@@ -201,3 +201,108 @@ export function playAdvancement() {
   osc.start();
   osc.stop(ctx.currentTime + 0.35);
 }
+
+export function playJump() {
+  const ctx = initAudioContext();
+  if (!ctx || !masterGain || !useGame.getState().soundOn) return;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(140, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(340, ctx.currentTime + 0.12);
+
+  gain.gain.setValueAtTime(0.2, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+
+  osc.connect(gain);
+  gain.connect(masterGain);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.12);
+}
+
+export function playLand() {
+  const ctx = initAudioContext();
+  if (!ctx || !masterGain || !useGame.getState().soundOn) return;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(110, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(45, ctx.currentTime + 0.1);
+
+  gain.gain.setValueAtTime(0.25, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+
+  osc.connect(gain);
+  gain.connect(masterGain);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.1);
+}
+
+export function playFlyToggle(flying: boolean) {
+  const ctx = initAudioContext();
+  if (!ctx || !masterGain || !useGame.getState().soundOn) return;
+
+  const notes = flying ? [520, 780, 1040] : [1040, 780, 520];
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const startTime = ctx.currentTime + idx * 0.06;
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+
+    gain.gain.setValueAtTime(0.18, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12);
+
+    osc.connect(gain);
+    gain.connect(masterGain!);
+
+    osc.start(startTime);
+    osc.stop(startTime + 0.12);
+  });
+}
+
+export function playPortalWarp() {
+  const ctx = initAudioContext();
+  if (!ctx || !masterGain || !useGame.getState().soundOn) return;
+
+  const osc1 = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc1.type = 'sawtooth';
+  osc2.type = 'sine';
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(400, ctx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.4);
+  filter.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.9);
+
+  osc1.frequency.setValueAtTime(90, ctx.currentTime);
+  osc1.frequency.exponentialRampToValueAtTime(180, ctx.currentTime + 0.9);
+
+  osc2.frequency.setValueAtTime(135, ctx.currentTime);
+  osc2.frequency.exponentialRampToValueAtTime(270, ctx.currentTime + 0.9);
+
+  gain.gain.setValueAtTime(0.01, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.3);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.9);
+
+  osc1.connect(filter);
+  osc2.connect(filter);
+  filter.connect(gain);
+  gain.connect(masterGain);
+
+  osc1.start();
+  osc2.start();
+  osc1.stop(ctx.currentTime + 0.9);
+  osc2.stop(ctx.currentTime + 0.9);
+}
+
