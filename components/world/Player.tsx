@@ -57,6 +57,8 @@ export function Player() {
   const lastSpaceTime = useRef(-1e9);
   const wasAirborne = useRef(false);
   const footstepTimer = useRef(0);
+  const isGroundedRef = useRef(true);
+  const ctrlDownTime = useRef(0);
 
   // Homecraft Camera Rig smoothed state
   const cameraYaw = useRef(0); // 0 = viewing towards -Z (North into island)
@@ -191,14 +193,12 @@ export function Player() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isTypingTarget(document.activeElement)) return;
 
-      // Ctrl key toggles Mouse Aim (Pointer Lock) vs Arrow Cursor Mode
-      if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+      // F key: Toggle Creative Flight mode anytime
+      if (e.code === 'KeyF' && stage === 'play' && !disabled) {
         e.preventDefault();
-        if (document.pointerLockElement === gl.domElement) {
-          document.exitPointerLock();
-        } else if (!disabled && stage === 'play') {
-          gl.domElement.requestPointerLock();
-        }
+        const nextFlight = !useGame.getState().isFlying;
+        setIsFlying(nextFlight);
+        playFlyToggle(nextFlight);
         return;
       }
 
@@ -209,16 +209,42 @@ export function Player() {
         return;
       }
 
-      // Space key: Double-tap detection for Creative Flight toggle (<350ms)
+      // Ctrl key handling:
+      // Track timestamp so quick tap (<220ms) can toggle pointer lock on keyup,
+      // while holding Ctrl descends smoothly when flying or sneaks!
+      if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+        if (!keys.current['ControlLeft'] && !keys.current['ControlRight']) {
+          ctrlDownTime.current = performance.now();
+        }
+        keys.current[e.code] = true;
+        keys.current['ControlLeft'] = true;
+        return;
+      }
+
+      // Space key: Double-tap detection for Creative Flight toggle.
+      // BUG FIX: If grounded, spamming space MUST NOT trigger flight! Jumping on the ground
+      // is standard Minecraft bunny-hopping. Double-tap fly only triggers when airborne or already flying.
       if (e.code === 'Space' && !e.repeat) {
+        const flying = useGame.getState().isFlying;
         const now = performance.now();
-        if (now - lastSpaceTime.current < 350) {
-          lastSpaceTime.current = -1e9;
-          const nextFlight = !useGame.getState().isFlying;
-          setIsFlying(nextFlight);
-          playFlyToggle(nextFlight);
+        if (flying) {
+          // If already flying, double-tap Space lands
+          if (now - lastSpaceTime.current < 250) {
+            lastSpaceTime.current = -1e9;
+            setIsFlying(false);
+            playFlyToggle(false);
+          } else {
+            lastSpaceTime.current = now;
+          }
         } else {
-          lastSpaceTime.current = now;
+          // On ground or jumping: ONLY enter flight if double-tapped while in MIDAIR (airborne) < 220ms
+          if (!isGroundedRef.current && now - lastSpaceTime.current < 220) {
+            lastSpaceTime.current = -1e9;
+            setIsFlying(true);
+            playFlyToggle(true);
+          } else {
+            lastSpaceTime.current = now;
+          }
         }
       }
 
@@ -239,6 +265,20 @@ export function Player() {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       keys.current[e.code] = false;
+
+      // Ctrl keyup: If it was a quick tap (< 220ms) and NOT flying, toggle pointer lock / arrow cursor
+      if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
+        keys.current['ControlLeft'] = false;
+        keys.current['ControlRight'] = false;
+        const holdDuration = performance.now() - ctrlDownTime.current;
+        if (holdDuration < 220 && !useGame.getState().isFlying && stage === 'play' && !disabled) {
+          if (document.pointerLockElement === gl.domElement) {
+            document.exitPointerLock();
+          } else {
+            gl.domElement.requestPointerLock();
+          }
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -255,7 +295,7 @@ export function Player() {
     travelTimer.current = 0;
   }, [playerTarget]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (!bodyRef.current) return;
 
     const pos = bodyRef.current.translation();
@@ -341,8 +381,8 @@ export function Player() {
           return;
         }
 
-        // Auto-walk towards target at sprint speed
-        const speed = 7.8;
+        // Auto-walk towards target at fast travel speed
+        const speed = 22.0;
         const vx = (dx / dist) * speed;
         const vz = (dz / dist) * speed;
         bodyRef.current.setLinvel({ x: vx, y: linvel.y, z: vz }, true);
@@ -352,14 +392,14 @@ export function Player() {
           let diff = targetRot - visualRef.current.rotation.y;
           while (diff < -Math.PI) diff += Math.PI * 2;
           while (diff > Math.PI) diff -= Math.PI * 2;
-          visualRef.current.rotation.y += diff * Math.min(1, delta * 18);
+          visualRef.current.rotation.y += diff * Math.min(1, delta * 25);
         }
         if (!isMoving) setIsMoving(true);
 
         // Smooth camera follow during station travel
         _targetFocus.set(pos.x, pos.y + 1.25, pos.z);
-        focus.current.lerp(_targetFocus, 1 - Math.exp(-delta * 14));
-        const k = 1 - Math.exp(-delta * 14);
+        focus.current.lerp(_targetFocus, 1 - Math.exp(-delta * 20));
+        const k = 1 - Math.exp(-delta * 20);
         cameraYaw.current += (yawGoal.current - cameraYaw.current) * k;
         cameraPitch.current += (pitchGoal.current - cameraPitch.current) * k;
         cameraDist.current += (distGoal.current - cameraDist.current) * k;
@@ -387,6 +427,7 @@ export function Player() {
     const ray = new rapier.Ray(rayOrigin, rayDir);
     const hit = world.castRay(ray, 0.45, true);
     const isGrounded = !!hit;
+    isGroundedRef.current = isGrounded;
 
     // Landing sound detection
     if (wasAirborne.current && isGrounded && linvel.y <= 0) {
@@ -426,7 +467,7 @@ export function Player() {
         setClickNavTarget(null);
         setIsMoving(false);
       } else {
-        const navSpeed = 6.8;
+        const navSpeed = 15.0;
         vx = (dx / dist) * navSpeed;
         vz = (dz / dist) * navSpeed;
         if (!isMoving) setIsMoving(true);
@@ -436,7 +477,7 @@ export function Player() {
           let diff = targetRot - visualRef.current.rotation.y;
           while (diff < -Math.PI) diff += Math.PI * 2;
           while (diff > Math.PI) diff -= Math.PI * 2;
-          visualRef.current.rotation.y += diff * Math.min(1, delta * 18);
+          visualRef.current.rotation.y += diff * Math.min(1, delta * 25);
         }
       }
     } else {
@@ -451,7 +492,10 @@ export function Player() {
         const normX = inputX / inputLen;
         const normZ = inputZ / inputLen;
 
-        const baseSpeed = isFlying ? (isRunning ? 15.0 : 8.5) : (isRunning ? 8.2 : 5.2);
+        // Snappy, energetic Minecraft movement speeds
+        const baseSpeed = isFlying
+          ? (isRunning ? 32.0 : 20.0)
+          : (isRunning ? 18.5 : 12.0);
 
         vx = (forwardX * normZ + rightX * normX) * baseSpeed;
         vz = (forwardZ * normZ + rightZ * normX) * baseSpeed;
@@ -462,13 +506,13 @@ export function Player() {
           let diff = targetRot - visualRef.current.rotation.y;
           while (diff < -Math.PI) diff += Math.PI * 2;
           while (diff > Math.PI) diff -= Math.PI * 2;
-          visualRef.current.rotation.y += diff * Math.min(1, delta * 20);
+          visualRef.current.rotation.y += diff * Math.min(1, delta * 25);
         }
 
         // Footstep audio when running on ground
         if (isGrounded && !isFlying) {
           footstepTimer.current += delta;
-          const interval = isRunning ? 0.28 : 0.38;
+          const interval = isRunning ? 0.18 : 0.26;
           if (footstepTimer.current >= interval) {
             playFootstep('grass');
             footstepTimer.current = 0;
@@ -480,10 +524,14 @@ export function Player() {
     // 8. Flight Kinematics vs Ground Jump Kinematics
     if (isFlying) {
       // Creative Flight: vertical climb and descent
+      const isFast = isRunning || keys.current['ShiftLeft'] || keys.current['ShiftRight'];
+      const isCtrlDown = keys.current['ControlLeft'] || keys.current['ControlRight'] || keys.current['KeyC'];
+      const isShiftDescend = (keys.current['ShiftLeft'] || keys.current['ShiftRight']) && !keys.current['KeyW'];
+
       if (keys.current['Space']) {
-        vy = 6.0; // CLIMB
-      } else if (keys.current['ControlLeft'] || keys.current['ControlRight'] || keys.current['KeyC']) {
-        vy = -6.0; // DESCEND
+        vy = isFast ? 24.0 : 15.0; // CLIMB UP
+      } else if (isCtrlDown || isShiftDescend) {
+        vy = isFast ? -24.0 : -15.0; // DESCEND DOWN (via Ctrl, Shift, or C)
         // Auto-land if player touches solid ground while descending
         if (isGrounded && pos.y < 9.0) {
           setIsFlying(false);
@@ -494,9 +542,9 @@ export function Player() {
         vy = 0; // Hover, gravity neutralized
       }
     } else {
-      // Standard Ground Physics: Jump clears 1.25 blocks cleanly
-      if (keys.current['Space'] && isGrounded && linvel.y <= 0.4 && linvel.y >= -1.5) {
-        vy = 7.6;
+      // Standard Ground Physics: Jump clears full 1.35m blocks cleanly
+      if (keys.current['Space'] && isGrounded && linvel.y <= 0.4 && linvel.y >= -2.0) {
+        vy = 8.6;
         playJump();
       }
     }
@@ -505,10 +553,19 @@ export function Player() {
 
     // 9. Camera Rig with Homecraft Exponential Damping
     if (stage === 'play') {
-      const k = 1 - Math.exp(-delta * 14);
+      const k = 1 - Math.exp(-delta * 22);
       cameraYaw.current += (yawGoal.current - cameraYaw.current) * k;
       cameraPitch.current += (pitchGoal.current - cameraPitch.current) * k;
       cameraDist.current += (distGoal.current - cameraDist.current) * k;
+
+      // Dynamic Speed Rush FOV (authentic Minecraft sprint effect)
+      const currentSpeed = Math.hypot(vx, vz);
+      const targetFov = isRunning || currentSpeed > 14.0 ? 68 : 55;
+      const persCamera = state.camera as THREE.PerspectiveCamera;
+      if (persCamera.fov) {
+        persCamera.fov += (targetFov - persCamera.fov) * (1 - Math.exp(-delta * 12));
+        persCamera.updateProjectionMatrix();
+      }
 
       if (isFirstPerson) {
         // First Person Mode: camera placed at eye level (1.62m)
