@@ -1,0 +1,49 @@
+{
+  "poolTotal": "₹1,50,000",
+  "tiers": [
+    {
+      "id": "gold",
+      "tier": "First Place (Overall Winner)",
+      "amount": "₹75,000",
+      "description": "Awarded to the overall top project demonstrating exceptional technical execution, creativity, and polish.",
+      "perks": ["Winner Trophy", "Direct fast-track interview with sponsors", "Exclusive hardware perks"]
+    },
+    {
+      "id": "silver",
+      "tier": "Second Place (Runner Up)",
+      "amount": "₹45,000",
+      "description": "Awarded to the second-highest ranked project with outstanding design and architecture.",
+      "perks": ["Runner-up Trophy", "Cloud credits", "Mentorship access"]
+    },
+    {
+      "id": "bronze",
+      "tier": "Third Place",
+      "amount": "₹30,000",
+      "description": "Awarded to the third-place team demonstrating high potential and practical execution.",
+      "perks": ["Third Place Plaque", "Cloud credits"]
+    }
+  ],
+  "special": [
+    {
+      "id": "best-beginner",
+      "title": "Best All-Beginner Team",
+      "amount": "₹15,000",
+      "description": "Best project submitted by first-time hackathon participants.",
+      "criteria": "All team members attending their first in-person hackathon."
+    },
+    {
+      "id": "best-ui",
+      "title": "Excellence in UI/UX & Craft",
+      "amount": "₹15,000",
+      "description": "Best user interface, accessible interaction design, and delightful user experience.",
+      "criteria": "Aesthetic quality, responsive ergonomics, and accessibility compliance."
+    }
+  ],
+  "swag": [
+    "Custom Embroidered Voxel Island Hoodie",
+    "Limited Edition Hackathon Sticker Pack",
+    "Insulated Stainless Steel Bottle",
+    "NFC Participant Passport"
+  ]
+}
+

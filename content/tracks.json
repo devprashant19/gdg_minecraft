@@ -1,0 +1,33 @@
+[
+  {
+    "slug": "ai-agents",
+    "title": "Autonomous AI & Agents",
+    "icon": "brain",
+    "summary": "Build agentic workflows, multi-agent swarms, and autonomous reasoning systems.",
+    "ideas": ["Self-healing systems", "Personal research assistants", "Coding pair agents", "Autonomous workflow automation"],
+    "sponsor": "gemini"
+  },
+  {
+    "slug": "web3-infrastructure",
+    "title": "Decentralized Systems",
+    "icon": "blocks",
+    "summary": "Pioneer cryptographic applications, verifiable computation, and decentralized identity.",
+    "ideas": ["Decentralized attestations", "Zero-knowledge verification", "Peer-to-peer data mesh"],
+    "sponsor": "polygon"
+  },
+  {
+    "slug": "interactive-3d",
+    "title": "Interactive 3D & Spatial Web",
+    "icon": "cube",
+    "summary": "Create next-generation WebGL/WebGPU interactive digital twins and browser worlds.",
+    "ideas": ["Collaborative 3D spaces", "Physics simulations", "Procedural worlds", "Spatial UI kits"]
+  },
+  {
+    "slug": "open-innovation",
+    "title": "Open Innovation",
+    "icon": "sparkles",
+    "summary": "High-impact software tackling sustainability, education, healthcare, or developer tools.",
+    "ideas": ["Developer productivity", "Civic tech", "Climate modeling"]
+  }
+]
+

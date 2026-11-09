@@ -1,0 +1,31 @@
+[
+  {
+    "name": "Aarav Sharma",
+    "role": "Lead Organizer",
+    "avatar": "/team/aarav.webp",
+    "bio": "Community builder & software architect passionate about distributed systems.",
+    "links": { "github": "https://github.com", "x": "https://x.com" }
+  },
+  {
+    "name": "Priya Nair",
+    "role": "Operations & Logistics",
+    "avatar": "/team/priya.webp",
+    "bio": "Organizer with 5+ years crafting community developer hackathons.",
+    "links": { "linkedin": "https://linkedin.com" }
+  },
+  {
+    "name": "Rohan Deshmukh",
+    "role": "Technical Lead & 3D Engineering",
+    "avatar": "/team/rohan.webp",
+    "bio": "Creative technologist and WebGL explorer.",
+    "links": { "github": "https://github.com" }
+  },
+  {
+    "name": "Ananya Patel",
+    "role": "Design & Experience",
+    "avatar": "/team/ananya.webp",
+    "bio": "Product designer specializing in accessible interaction design.",
+    "links": { "x": "https://x.com" }
+  }
+]
+

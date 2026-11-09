@@ -1,0 +1,77 @@
+[
+  {
+    "id": "s-1",
+    "title": "Check-in & Welcome Breakfast",
+    "start": "2026-12-19T09:00:00+05:30",
+    "end": "2026-12-19T10:30:00+05:30",
+    "type": "ceremony",
+    "room": "Main Atrium"
+  },
+  {
+    "id": "s-2",
+    "title": "Opening Ceremony & Keynote",
+    "start": "2026-12-19T10:30:00+05:30",
+    "end": "2026-12-19T11:30:00+05:30",
+    "type": "ceremony",
+    "speaker": "Lead Organizer",
+    "room": "Main Stage"
+  },
+  {
+    "id": "s-3",
+    "title": "Hacking Begins & Team Formation",
+    "start": "2026-12-19T11:30:00+05:30",
+    "end": "2026-12-19T13:00:00+05:30",
+    "type": "hacking",
+    "room": "Hacker Arenas A & B"
+  },
+  {
+    "id": "s-4",
+    "title": "Lunch Break",
+    "start": "2026-12-19T13:00:00+05:30",
+    "end": "2026-12-19T14:00:00+05:30",
+    "type": "meal",
+    "room": "Dining Hall"
+  },
+  {
+    "id": "s-5",
+    "title": "Workshop: WebGL & Modern 3D",
+    "start": "2026-12-19T15:00:00+05:30",
+    "end": "2026-12-19T16:00:00+05:30",
+    "type": "workshop",
+    "speaker": "3D Architect",
+    "room": "Workshop Hall"
+  },
+  {
+    "id": "s-6",
+    "title": "Midnight Energy Boost & Mini Games",
+    "start": "2026-12-20T00:00:00+05:30",
+    "end": "2026-12-20T01:00:00+05:30",
+    "type": "fun",
+    "room": "Recreation Lounge"
+  },
+  {
+    "id": "s-7",
+    "title": "Hacking Deadline & Submissions",
+    "start": "2026-12-20T14:00:00+05:30",
+    "end": "2026-12-20T14:30:00+05:30",
+    "type": "hacking",
+    "room": "Portal Submissions"
+  },
+  {
+    "id": "s-8",
+    "title": "Project Demos & Judging",
+    "start": "2026-12-20T15:00:00+05:30",
+    "end": "2026-12-20T17:00:00+05:30",
+    "type": "judging",
+    "room": "Showcase Floor"
+  },
+  {
+    "id": "s-9",
+    "title": "Closing Ceremony & Awards",
+    "start": "2026-12-20T17:00:00+05:30",
+    "end": "2026-12-20T18:00:00+05:30",
+    "type": "ceremony",
+    "room": "Main Stage"
+  }
+]
+

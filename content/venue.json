@@ -1,0 +1,22 @@
+{
+  "name": "Tech Innovation Hub",
+  "address": "42 Cyber Road, Outer Ring, Bengaluru, Karnataka 560103",
+  "coordinates": { "lat": 12.9352, "lng": 77.6245 },
+  "mapUrl": "https://maps.google.com/?q=Bengaluru",
+  "mapImage": "/images/venue-map.webp",
+  "travelInfo": [
+    {
+      "mode": "Metro",
+      "details": "Nearest metro station is 1.5 km away. Feeder shuttles will run every 20 minutes on Dec 19 morning."
+    },
+    {
+      "mode": "Bus & Cabs",
+      "details": "Outer Ring Road buses stop right outside the technology campus. Dedicated cab pick-up/drop-off zone at Gate 2."
+    },
+    {
+      "mode": "Parking",
+      "details": "Free covered two-wheeler and four-wheeler parking is available on-campus for registered participants."
+    }
+  ]
+}
+

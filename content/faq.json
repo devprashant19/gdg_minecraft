@@ -1,0 +1,28 @@
+[
+  {
+    "q": "Who can participate?",
+    "a": "Anyone passionate about software, design, and problem solving! College students, recent grads, and professional developers are all welcome.",
+    "category": "general"
+  },
+  {
+    "q": "What is the team size requirement?",
+    "a": "Teams must consist of 2 to 4 members. Every team must designate exactly one leader during registration.",
+    "category": "teams"
+  },
+  {
+    "q": "Is there a registration fee?",
+    "a": "No, CraftHacks is completely free of charge! Food, drinks, swag, and access to mentorship are provided courtesy of our sponsors.",
+    "category": "general"
+  },
+  {
+    "q": "Can I work on an existing project?",
+    "a": "No. All code and designs must be created during the 36-hour hackathon window. Open source libraries, APIs, and frameworks are permitted.",
+    "category": "rules"
+  },
+  {
+    "q": "What should I bring to the venue?",
+    "a": "Your laptop, charger, student or government ID card, and enthusiasm to build! Sleeping bags and toiletries are recommended if staying overnight.",
+    "category": "venue"
+  }
+]
+

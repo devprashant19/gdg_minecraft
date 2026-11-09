@@ -1,0 +1,33 @@
+{
+  "name": "CraftHacks 2026",
+  "tagline": "Build the next dimension on the voxel frontier",
+  "organizer": "GDG Community",
+  "timezone": "Asia/Kolkata",
+  "startsAt": "2026-12-19T09:00:00+05:30",
+  "endsAt": "2026-12-20T18:00:00+05:30",
+  "venue": {
+    "name": "Tech Innovation Hub",
+    "address": "42 Cyber Road, Outer Ring, Bengaluru, Karnataka 560103",
+    "mapUrl": "https://maps.google.com/?q=Bengaluru",
+    "mapImage": "/images/venue-map.webp"
+  },
+  "contactEmail": "hello@crafthacks.dev",
+  "socials": [
+    { "label": "Twitter/X", "url": "https://x.com/crafthacks" },
+    { "label": "GitHub", "url": "https://github.com/crafthacks" },
+    { "label": "Discord", "url": "https://discord.gg/crafthacks" }
+  ],
+  "stats": [
+    { "label": "Prize Pool", "value": "₹1,50,000" },
+    { "label": "Hackers", "value": "300+" },
+    { "label": "Tracks", "value": "4" },
+    { "label": "Duration", "value": "36 Hours" }
+  ],
+  "links": {
+    "codeOfConduct": "/coc",
+    "privacy": "/privacy",
+    "sponsorDeck": "https://crafthacks.dev/sponsor-deck.pdf"
+  },
+  "cocVersion": "2026-11"
+}
+
