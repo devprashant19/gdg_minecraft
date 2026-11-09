@@ -50,7 +50,7 @@ export function UIOverlay() {
       if (isTypingTarget(document.activeElement)) return;
 
       if (
-        (e.code === 'KeyF' || e.code === 'KeyE' || e.code === 'Enter') &&
+        (e.code === 'KeyE' || e.code === 'Enter') &&
         nearbyStation &&
         !openSection
       ) {
@@ -192,7 +192,7 @@ export function UIOverlay() {
           <div className="absolute top-28 left-1/2 -translate-x-1/2 pointer-events-none transition-opacity duration-300">
             <div className="px-3.5 py-1.5 bg-blue-950/90 border border-cyan-500/80 rounded-md text-[11px] font-pixel text-cyan-200 shadow-lg flex items-center gap-2 backdrop-blur-xs">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-              <span>✈️ Creative Flight · [Space] Climb · [Ctrl] Descend · [Shift] Fast · [Space×2] Land</span>
+              <span>✈️ Flight Active · [Space] Up · [Ctrl/Shift] Down · [Shift] Boost · [F] Land</span>
             </div>
           </div>
         )}
@@ -234,8 +234,8 @@ export function UIOverlay() {
                 className="px-5 py-2.5 min-h-[48px] bg-black/95 border-2 border-[#e5b83b] hover:border-white rounded-lg font-pixel text-xs text-white bevel shadow-xl flex items-center gap-2 transition-transform active:scale-95 cursor-pointer"
               >
                 <span>Press</span>
-                <span className="text-[#e5b83b] font-bold text-sm">[F]</span>
-                <span>or [E] to Open {activeNearbyStation.label}</span>
+                <span className="text-[#e5b83b] font-bold text-sm">[E]</span>
+                <span>to Open {activeNearbyStation.label}</span>
               </button>
             </div>
           )}
@@ -244,17 +244,17 @@ export function UIOverlay() {
         {/* Accessible live announcement region */}
         <div role="status" aria-live="polite" className="sr-only">
           {activeNearbyStation
-            ? `Near ${activeNearbyStation.label} station. Press F or E to interact.`
+            ? `Near ${activeNearbyStation.label} station. Press E to interact.`
             : ''}
         </div>
 
         {/* Bottom Bar / Notification space */}
         <footer className="flex justify-between items-end w-full text-xs text-gray-400">
           <div className="px-2 py-1 bg-black/60 rounded hidden sm:block">
-            WASD Walk · Shift Sprint · Space Jump/Double-Tap Fly · Ctrl Aim · V First-Person · R Respawn
+            WASD Walk · Shift Sprint · Space Jump/Up · Ctrl/Shift Down · F Fly · Ctrl Aim · V 1st-Person · R Respawn
           </div>
           <div className="px-2 py-1 bg-black/60 rounded">
-            [F/E] Open · [?] Help · [1-9] Travel · [T] Tour · [M] Mute
+            [E] Open · [F] Fly · [?] Help · [1-9] Travel · [T] Tour · [M] Mute
           </div>
         </footer>
       </div>

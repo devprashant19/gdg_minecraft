@@ -53,16 +53,28 @@ export function HelpOverlay() {
 
         <div className="space-y-3 font-mono text-xs">
           <div>
-            <span className="font-pixel text-[#5b8c32]">WASD / Arrows</span>: Move character
+            <span className="font-pixel text-[#5b8c32]">WASD / Arrows</span>: Move character (12.0 m/s walk, 18.5 m/s sprint)
           </div>
           <div>
-            <span className="font-pixel text-[#5b8c32]">Shift</span>: Sprint (capped at 6.7 u/s)
+            <span className="font-pixel text-[#5b8c32]">Shift</span>: Sprint / Speed Boost (with dynamic rush FOV)
           </div>
           <div>
-            <span className="font-pixel text-[#5b8c32]">Space</span>: Jump (clears 1 block)
+            <span className="font-pixel text-[#5b8c32]">Space</span>: Jump (clears 1.4 blocks) / Climb in flight
           </div>
           <div>
-            <span className="font-pixel text-[#5b8c32]">E / Enter</span>: Interact with nearby station
+            <span className="font-pixel text-[#5b8c32]">Ctrl / Shift</span>: Descend in flight / sneak
+          </div>
+          <div>
+            <span className="font-pixel text-[#5b8c32]">F</span>: Toggle Creative Flight mode (or double-tap Space while midair)
+          </div>
+          <div>
+            <span className="font-pixel text-[#5b8c32]">V</span>: Toggle 1st Person POV / 3rd Person
+          </div>
+          <div>
+            <span className="font-pixel text-[#5b8c32]">Ctrl (Tap)</span>: Toggle Mouse Aim / Arrow Cursor
+          </div>
+          <div>
+            <span className="font-pixel text-[#5b8c32]">E / F</span>: Interact with nearby station
           </div>
           <div>
             <span className="font-pixel text-[#5b8c32]">1 to 9</span>: Fast travel via hotbar
@@ -88,3 +100,4 @@ export function HelpOverlay() {
     </div>
   );
 }
+
