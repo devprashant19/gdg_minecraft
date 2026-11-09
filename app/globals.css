@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+:root {
+  --background: #181425;
+  --foreground: #f4f4f4;
+
+  /* Theme Tokens */
+  --color-grass: #5b8c32;
+  --color-dirt: #866043;
+  --color-stone: #797979;
+  --color-gold: #e5b83b;
+  --color-emerald: #41a85f;
+  --color-ink: #181425;
+  --color-panel: rgba(24, 20, 37, 0.92);
+
+  --font-pixel: 'Press Start 2P', monospace, sans-serif;
+  --font-mono-pixel: 'Monocraft', monospace, monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: var(--font-mono-pixel), monospace, sans-serif;
+}
+
+/* Pixel Typography Utilities */
+.font-pixel {
+  font-family: var(--font-pixel), monospace, sans-serif;
+}
+
+.font-mono-pixel {
+  font-family: var(--font-mono-pixel), monospace, sans-serif;
+}
+
+/* Bevel Styling for 8-bit aesthetic */
+.bevel {
+  box-shadow: 
+    inset -3px -3px 0px 0px rgba(0, 0, 0, 0.55),
+    inset 3px 3px 0px 0px rgba(255, 255, 255, 0.35);
+}
+
+.bevel-pressed {
+  box-shadow: 
+    inset 3px 3px 0px 0px rgba(0, 0, 0, 0.65),
+    inset -2px -2px 0px 0px rgba(255, 255, 255, 0.15);
+}
+
+.bevel-gold {
+  box-shadow:
+    inset -3px -3px 0px 0px #a47818,
+    inset 3px 3px 0px 0px #ffe580;
+}
+
+/* Accessible Skip Link */
+.skip-link {
+  position: absolute;
+  top: -9999px;
+  left: 1rem;
+  z-index: 1000;
+  padding: 0.75rem 1.25rem;
+  background: var(--color-gold);
+  color: #000;
+  font-weight: bold;
+  text-decoration: none;
+  border: 2px solid #000;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}

@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="100%" height="100%" style="background:#0f172a">
+  <defs>
+    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="40%" stop-color="#312e81" />
+      <stop offset="70%" stop-color="#e06f47" />
+      <stop offset="100%" stop-color="#f6c7a0" />
+    </linearGradient>
+    <linearGradient id="seaGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#14532d" />
+      <stop offset="50%" stop-color="#0e7490" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Sky Background -->
+  <rect width="800" height="420" fill="url(#skyGrad)" />
+  
+  <!-- Low Polygon Rising Sun -->
+  <circle cx="400" cy="280" r="48" fill="#fde047" opacity="0.85" filter="url(#glow)" />
+  
+  <!-- Ocean Plane -->
+  <rect y="390" width="800" height="210" fill="url(#seaGrad)" />
+  
+  <!-- Ocean Horizon Wave Foam -->
+  <line x1="0" y1="390" x2="800" y2="390" stroke="#bae6fd" stroke-width="3" stroke-dasharray="16 8" opacity="0.6" />
+  <line x1="40" y1="415" x2="760" y2="415" stroke="#7dd3fc" stroke-width="2" stroke-dasharray="32 12" opacity="0.4" />
+  <line x1="80" y1="450" x2="720" y2="450" stroke="#38bdf8" stroke-width="2" stroke-dasharray="24 16" opacity="0.3" />
+
+  <!-- Isometric Voxel Island Base -->
+  <g transform="translate(400, 360)">
+    <!-- Deep Cliff Walls (Stone / Dirt Layers) -->
+    <polygon points="-240,40 0,160 240,40 240,75 0,195 -240,75" fill="#2d241e" />
+    <polygon points="-240,15 0,135 240,15 240,40 0,160 -240,40" fill="#4a3728" />
+    <polygon points="-240,-10 0,110 240,-10 240,15 0,135 -240,15" fill="#5c4d43" />
+    <polygon points="-240,-35 0,85 240,-35 240,-10 0,110 -240,-10" fill="#786c63" />
+
+    <!-- Sand Shore Tier -->
+    <polygon points="-240,-45 0,75 240,-45 0,-165" fill="#eab308" opacity="0.9" />
+
+    <!-- Lush Grass Top Platform -->
+    <polygon points="-210,-55 0,50 210,-55 0,-160" fill="#3f8f27" />
+    <polygon points="-210,-55 0,50 0,65 -210,-40" fill="#2a6617" />
+    <polygon points="0,50 210,-55 210,-40 0,65" fill="#1b460d" />
+
+    <!-- Stone Pathway to Portal -->
+    <polygon points="-30,35 0,50 30,35 0,20" fill="#94a3b8" />
+    <polygon points="-25,18 0,32 25,18 0,4" fill="#64748b" />
+    <polygon points="-20,2 0,15 20,2 0,-11" fill="#475569" />
+    <polygon points="-16,-13 0,-2 16,-13 0,-24" fill="#64748b" />
+
+    <!-- Center Obsidian Portal Structure -->
+    <g transform="translate(0, -50)">
+      <!-- Left Obsidian Pillar -->
+      <polygon points="-40,-10 -25,-18 -25,50 -40,58" fill="#1e1026" />
+      <polygon points="-25,-18 -15,-24 -15,44 -25,50" fill="#2e1a3b" />
+      <polygon points="-40,-10 -25,-18 -15,-24 -30,-16" fill="#432657" />
+
+      <!-- Right Obsidian Pillar -->
+      <polygon points="15,-24 25,-18 25,50 15,44" fill="#1e1026" />
+      <polygon points="25,-18 40,-10 40,58 25,50" fill="#2e1a3b" />
+      <polygon points="15,-24 25,-18 40,-10 30,-16" fill="#432657" />
+
+      <!-- Top Obsidian Arch -->
+      <polygon points="-40,-10 0,10 40,-10 0,-30" fill="#2e1a3b" />
+      <polygon points="-40,-10 0,10 0,20 -40,0" fill="#1e1026" />
+      <polygon points="0,10 40,-10 40,0 0,20" fill="#3f2351" />
+
+      <!-- Glowing Purple Portal Fluid -->
+      <polygon points="-24,35 0,47 24,35 24,-5 0,-17 -24,-5" fill="#a855f7" opacity="0.88" filter="url(#glow)" />
+      <polygon points="-18,28 0,37 18,28 18,0 0,-9 -18,0" fill="#e879f9" opacity="0.9" />
+    </g>
+
+    <!-- Wooden Dock at North-West -->
+    <g transform="translate(-160, 20)">
+      <polygon points="-60,10 0,40 10,35 -50,5" fill="#854d0e" />
+      <polygon points="-60,10 -50,5 -50,15 -60,20" fill="#713f12" />
+      <polygon points="0,40 10,35 10,45 0,50" fill="#451a03" />
+      <!-- Dock Pilings into water -->
+      <rect x="-60" y="18" width="6" height="24" fill="#451a03" />
+      <rect x="-30" y="32" width="6" height="24" fill="#451a03" />
+      <rect x="2" y="45" width="6" height="24" fill="#451a03" />
+    </g>
+
+    <!-- Blocky Trees -->
+    <!-- Tree 1 (Left) -->
+    <g transform="translate(-100, -60)">
+      <!-- Trunk -->
+      <polygon points="-5,10 0,13 5,10 0,7" fill="#78350f" />
+      <rect x="-3" y="12" width="6" height="18" fill="#451a03" />
+      <!-- Foliage Box -->
+      <polygon points="-24,-15 0,-3 24,-15 0,-27" fill="#22c55e" />
+      <polygon points="-24,-15 0,-3 0,10 -24,-2" fill="#16a34a" />
+      <polygon points="0,-3 24,-15 24,-2 0,10" fill="#15803d" />
+    </g>
+
+    <!-- Tree 2 (Right) -->
+    <g transform="translate(120, -50)">
+      <polygon points="-5,10 0,13 5,10 0,7" fill="#78350f" />
+      <rect x="-3" y="12" width="6" height="22" fill="#451a03" />
+      <polygon points="-28,-20 0,-6 28,-20 0,-34" fill="#22c55e" />
+      <polygon points="-28,-20 0,-6 0,8 -28,-6" fill="#16a34a" />
+      <polygon points="0,-6 28,-20 28,-6 0,8" fill="#15803d" />
+    </g>
+
+    <!-- Stations / Small Buildings -->
+    <!-- Station Chest (East) -->
+    <g transform="translate(70, -10)">
+      <polygon points="-12,-6 0,0 12,-6 0,-12" fill="#d97706" />
+      <polygon points="-12,-6 0,0 0,8 -12,2" fill="#b45309" />
+      <polygon points="0,0 12,-6 12,2 0,8" fill="#92400e" />
+    </g>
+  </g>
+
+  <!-- Title Badge Overlay -->
+  <g transform="translate(400, 80)">
+    <rect x="-190" y="-24" width="380" height="48" rx="8" fill="#0f172a" fill-opacity="0.85" stroke="#f59e0b" stroke-width="2" />
+    <text text-anchor="middle" y="6" fill="#fbbf24" font-family="monospace" font-size="20" font-weight="bold" letter-spacing="2">VOXEL ISLAND HACKATHON</text>
+  </g>
+</svg>
