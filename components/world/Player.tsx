@@ -542,10 +542,14 @@ export function Player() {
         vy = 0; // Hover, gravity neutralized
       }
     } else {
-      // Standard Ground Physics: Jump clears full 1.35m blocks cleanly
-      if (keys.current['Space'] && isGrounded && linvel.y <= 0.4 && linvel.y >= -2.0) {
-        vy = 8.6;
+      // Standard Ground Physics: Authentic Minecraft gravity and jumping
+      if (keys.current['Space'] && isGrounded && linvel.y <= 0.8) {
+        // Crisp 8.8 m/s vertical impulse clearing 1.35m blocks with 0.6s snappy arc
+        vy = 8.8;
         playJump();
+      } else if (isGrounded && !keys.current['Space'] && linvel.y <= 0) {
+        // Ground snap / adherence: prevents bouncy skipping when running down block terraces
+        vy = -1.5;
       }
     }
 
@@ -606,9 +610,11 @@ export function Player() {
       colliders={false}
       enabledRotations={[false, false, false]}
       ccd={true}
+      gravityScale={isFlying ? 0 : 1}
+      linearDamping={0.3}
       name="player"
     >
-      <CapsuleCollider args={[0.5, 0.3]} name="player" />
+      <CapsuleCollider args={[0.5, 0.3]} friction={0.1} restitution={0.0} name="player" />
       <group ref={visualRef} rotation={[0, Math.PI, 0]}>
         <PlayerModel isMoving={isMoving} />
         {!isFlying && <BlobShadow />}

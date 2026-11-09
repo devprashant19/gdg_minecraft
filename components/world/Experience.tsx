@@ -159,8 +159,8 @@ export default function Experience({ onRendered }: ExperienceProps) {
           {/* Ocean Water Plane with Foam and Sun Glint */}
           <Water tod={tod} />
 
-          {/* Physics World: Player, Island, Stations & Boundaries */}
-          <Physics gravity={[0, -18, 0]}>
+          {/* Physics World: Authentic Minecraft Gravity (28 m/s^2), Player, Island, Stations & Boundaries */}
+          <Physics gravity={[0, -28, 0]}>
             <Player />
             <Island seed={1337} />
             <Dock />
