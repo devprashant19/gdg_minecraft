@@ -2,11 +2,11 @@
 
 import React, { useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { RigidBody, CylinderCollider } from '@react-three/rapier';
 import { Station as StationType } from '@/content/stations';
 import { useGame, SectionId } from '@/lib/store';
+import { StationModel } from './StationModels';
 
 interface StationProps {
   station: StationType;
@@ -20,93 +20,57 @@ export function Station({ station }: StationProps) {
   const nearbyStation = useGame((s) => s.nearbyStation);
 
   const isNearby = nearbyStation === station.id;
-  const meshRef = useRef<THREE.Group>(null);
   const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      if (isNearby || hovered) {
-        meshRef.current.rotation.y = state.clock.getElapsedTime() * 0.8;
-      }
-    }
-  });
-
-  const getStationColor = () => {
-    switch (station.id) {
-      case 'welcome':
-        return '#8b5a2b';
-      case 'tracks':
-        return '#3b82f6';
-      case 'schedule':
-        return '#f59e0b';
-      case 'prizes':
-        return '#eab308';
-      case 'sponsors':
-        return '#10b981';
-      case 'team':
-        return '#ec4899';
-      case 'faq':
-        return '#8b5cf6';
-      case 'venue':
-        return '#06b6d4';
-      case 'register':
-        return '#a855f7';
-      default:
-        return '#5b8c32';
-    }
-  };
 
   return (
     <group position={station.position} name={`station-${station.id}`}>
-      {/* 3D Interactive Station Model */}
-      <group
-        ref={meshRef}
-        position={[0, 0.75, 0]}
-        onPointerDown={(e) => {
-          pointerDownPos.current = { x: e.clientX, y: e.clientY };
-        }}
-        onPointerUp={(e) => {
-          if (pointerDownPos.current) {
-            const dist = Math.hypot(
-              e.clientX - pointerDownPos.current.x,
-              e.clientY - pointerDownPos.current.y
-            );
-            if (dist <= 6) {
-              open(station.id as SectionId);
+      {/* 3D Handcrafted Minecraft Structure (Portal renders its own obsidian gate) */}
+      {station.id !== 'register' && (
+        <group
+          position={[0, 0, 0]}
+          onPointerDown={(e) => {
+            pointerDownPos.current = { x: e.clientX, y: e.clientY };
+          }}
+          onPointerUp={(e) => {
+            if (pointerDownPos.current) {
+              const dist = Math.hypot(
+                e.clientX - pointerDownPos.current.x,
+                e.clientY - pointerDownPos.current.y
+              );
+              if (dist <= 6) {
+                open(station.id as SectionId);
+              }
             }
-          }
-          pointerDownPos.current = null;
-        }}
-        onPointerOver={() => {
-          document.body.style.cursor = 'pointer';
-          setHovered(true);
-        }}
-        onPointerOut={() => {
-          document.body.style.cursor = 'default';
-          setHovered(false);
-        }}
-      >
-        <mesh castShadow receiveShadow>
-          <boxGeometry args={[0.9, 0.9, 0.9]} />
-          <meshStandardMaterial
-            color={getStationColor()}
-            emissive={isNearby ? '#ffb46b' : hovered ? '#ffd285' : '#111111'}
-            emissiveIntensity={isNearby ? 0.7 : hovered ? 0.45 : 0.05}
-            roughness={0.3}
+            pointerDownPos.current = null;
+          }}
+          onPointerOver={() => {
+            document.body.style.cursor = 'pointer';
+            setHovered(true);
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = 'default';
+            setHovered(false);
+          }}
+        >
+          <StationModel
+            stationId={station.id}
+            isNearby={isNearby}
+            hovered={hovered}
           />
-        </mesh>
-        {/* Floating Accent Ring */}
-        {(isNearby || hovered) && (
-          <mesh position={[0, 0.7, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.55, 0.65, 16]} />
-            <meshBasicMaterial color="#ffb46b" side={THREE.DoubleSide} />
-          </mesh>
-        )}
-      </group>
+
+          {/* Floating Accent Ring on Hover or Proximity */}
+          {(isNearby || hovered) && (
+            <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[1.4, 1.55, 32]} />
+              <meshBasicMaterial color="#ffb46b" side={THREE.DoubleSide} transparent opacity={0.8} />
+            </mesh>
+          )}
+        </group>
+      )}
 
       {/* 3D Pixel Nameplate */}
       <Html
-        position={[0, 2.3, 0]}
+        position={[0, station.id === 'register' ? 3.6 : 3.2, 0]}
         center
         distanceFactor={14}
         occlude
