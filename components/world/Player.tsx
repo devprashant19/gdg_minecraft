@@ -33,10 +33,10 @@ const _mouseNDC = new THREE.Vector2();
 const HOMECRAFT_JUMP = 6.4;
 const HOMECRAFT_GRAVITY = 19.0;
 const HOMECRAFT_CLIMB = 6.0;
-const HOMECRAFT_WALK = 6.8;
-const HOMECRAFT_RUN = 12.0;
-const HOMECRAFT_FLY = 12.0;
-const HOMECRAFT_FLY_FAST = 20.0;
+const HOMECRAFT_WALK = 4.2;
+const HOMECRAFT_RUN = 7.2;
+const HOMECRAFT_FLY = 9.5;
+const HOMECRAFT_FLY_FAST = 18.0;
 
 export function Player() {
   const bodyRef = useRef<RapierRigidBody>(null);
@@ -83,6 +83,11 @@ export function Player() {
   const distGoal = useRef(5.2);
   const focus = useRef(new THREE.Vector3(SPAWN_POSITION[0], SPAWN_POSITION[1] + 1.25, SPAWN_POSITION[2]));
 
+  // Exact Homecraft Movement Dynamics State (player.js:45, 50)
+  const speed = useRef(0);
+  const flightVel = useRef(new THREE.Vector3());
+  const lastHeading = useRef({ x: 0, z: -1 });
+
   const isDragging = useRef(false);
   const prevPointer = useRef({ x: 0, y: 0 });
   const pointerStart = useRef({ x: 0, y: 0 });
@@ -92,9 +97,11 @@ export function Player() {
     if (isFlying) {
       mode.current = 'fly';
       vy.current = 0;
+      flightVel.current.set(0, 0, 0);
     } else if (mode.current === 'fly') {
       mode.current = isGroundedRef.current ? 'ground' : 'air';
       vy.current = 0;
+      flightVel.current.set(0, 0, 0);
     }
   }, [isFlying]);
 
@@ -108,6 +115,8 @@ export function Player() {
       setIsFlying(false);
       mode.current = 'ground';
       vy.current = 0;
+      speed.current = 0;
+      flightVel.current.set(0, 0, 0);
       yawGoal.current = 0;
       pitchGoal.current = 0.24;
       cameraYaw.current = 0;
@@ -230,11 +239,19 @@ export function Player() {
       // F key: Toggle Creative Flight mode anytime
       if (e.code === 'KeyF' && stage === 'play' && !disabled) {
         e.preventDefault();
-        const nextFlight = !useGame.getState().isFlying;
-        setIsFlying(nextFlight);
-        mode.current = nextFlight ? 'fly' : (isGroundedRef.current ? 'ground' : 'air');
-        vy.current = 0;
-        playFlyToggle(nextFlight);
+        const willFly = !(useGame.getState().isFlying || mode.current === 'fly');
+        setIsFlying(willFly);
+        if (willFly) {
+          mode.current = 'fly';
+          vy.current = 0;
+          flightVel.current.set(0, 0, 0);
+        } else {
+          mode.current = isGroundedRef.current ? 'ground' : 'air';
+          vy.current = 0;
+          flightVel.current.set(0, 0, 0);
+        }
+        keys.current['Space'] = false;
+        playFlyToggle(willFly);
         return;
       }
 
@@ -257,29 +274,42 @@ export function Player() {
         return;
       }
 
-      // Space key: Exact Homecraft Double-Tap Flight & Ground Jump (Homecraft input.js:42-45 & player.js:165)
+      // Space key: Double-tap Space within 350ms toggles flight mode (start or cancel); single tap jumps
       if (e.code === 'Space' && !e.repeat && stage === 'play' && !disabled) {
         e.preventDefault();
         const now = performance.now();
-        if (now - lastSpaceTime.current < 300) {
-          // Double-tap Space within 300ms toggles flight
+        const timeSinceLastSpace = now - lastSpaceTime.current;
+
+        if (timeSinceLastSpace < 350) {
+          // Double-tap Space: toggle flight mode (start or cancel)
           lastSpaceTime.current = -1e9;
-          const willFly = !useGame.getState().isFlying;
+          const willFly = !(useGame.getState().isFlying || mode.current === 'fly');
           setIsFlying(willFly);
-          mode.current = willFly ? 'fly' : (isGroundedRef.current ? 'ground' : 'air');
-          vy.current = 0;
-          playFlyToggle(willFly);
-        } else {
-          lastSpaceTime.current = now;
-          // Single tap: jump ONLY in ground mode (locks out spamming in air)
-          if (mode.current === 'ground' && !useGame.getState().isFlying) {
-            mode.current = 'air';
-            vy.current = HOMECRAFT_JUMP;
-            jumpCooldown.current = 0.22;
-            playJump();
+          if (willFly) {
+            mode.current = 'fly';
+            vy.current = 0;
+            flightVel.current.set(0, 0, 0);
+          } else {
+            mode.current = isGroundedRef.current ? 'ground' : 'air';
+            vy.current = 0;
+            flightVel.current.set(0, 0, 0);
           }
+          keys.current['Space'] = false;
+          playFlyToggle(willFly);
+          return;
         }
+
+        // Single tap:
+        lastSpaceTime.current = now;
         keys.current['Space'] = true;
+
+        // Jump ONLY if currently on ground and not in flight (locks out midair space-spam)
+        if (mode.current === 'ground' && !useGame.getState().isFlying) {
+          mode.current = 'air';
+          vy.current = HOMECRAFT_JUMP; // 6.4 m/s
+          jumpCooldown.current = 0.22;
+          playJump();
+        }
         return;
       }
 
@@ -300,6 +330,9 @@ export function Player() {
 
     const handleKeyUp = (e: KeyboardEvent) => {
       keys.current[e.code] = false;
+      if (e.code === 'Space') {
+        keys.current['Space'] = false;
+      }
 
       // Ctrl keyup: If it was a quick tap (< 220ms) and NOT flying, toggle pointer lock / arrow cursor
       if (e.code === 'ControlLeft' || e.code === 'ControlRight' || e.key === 'Control') {
@@ -390,6 +423,10 @@ export function Player() {
         if (reducedMotion || travelTimer.current >= 4.0) {
           bodyRef.current.setTranslation({ x: tx, y: ty, z: tz }, true);
           bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          vy.current = 0;
+          mode.current = 'ground';
+          speed.current = 0;
+          flightVel.current.set(0, 0, 0);
           if (visualRef.current) {
             visualRef.current.rotation.y = Math.atan2(
               targetStation.position[0] - tx,
@@ -406,6 +443,8 @@ export function Player() {
           bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
           vy.current = 0;
           mode.current = 'ground';
+          speed.current = 0;
+          flightVel.current.set(0, 0, 0);
           if (visualRef.current) {
             visualRef.current.rotation.y = Math.atan2(
               targetStation.position[0] - pos.x,
@@ -419,9 +458,9 @@ export function Player() {
         }
 
         // Auto-walk towards target at fast travel speed
-        const speed = 22.0;
-        const vx = (dx / dist) * speed;
-        const vz = (dz / dist) * speed;
+        const waypointSpeed = 22.0;
+        const vx = (dx / dist) * waypointSpeed;
+        const vz = (dz / dist) * waypointSpeed;
         bodyRef.current.setLinvel({ x: vx, y: -0.5, z: vz }, true);
 
         if (visualRef.current) {
@@ -485,14 +524,14 @@ export function Player() {
     isGroundedRef.current = isGrounded;
 
     // Landing sound detection
-    if (wasAirborne.current && isGrounded && linvel.y <= 0) {
+    if (wasAirborne.current && isGrounded && vy.current <= 0) {
       playLand();
       wasAirborne.current = false;
     } else if (!isGrounded && !isFlying) {
       wasAirborne.current = true;
     }
 
-    // 5. Direction Vectors relative to Camera Yaw
+    // 5. Direction Vectors relative to Camera Yaw (Homecraft steer)
     const forwardX = -Math.sin(cameraYaw.current);
     const forwardZ = -Math.cos(cameraYaw.current);
     const rightX = Math.cos(cameraYaw.current);
@@ -511,6 +550,16 @@ export function Player() {
 
     const isRunning = keys.current['ShiftLeft'] || keys.current['ShiftRight'];
 
+    // Homecraft turnTowards avatar rotation (player.js:522-525)
+    const turnTowards = (dx: number, dz: number, dt: number) => {
+      if (!visualRef.current) return;
+      const targetAngle = Math.atan2(dx, dz);
+      let diff = targetAngle - visualRef.current.rotation.y;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      visualRef.current.rotation.y += diff * Math.min(1, dt * 12);
+    };
+
     // 6. Click-to-Walk Ground Navigation
     if (clickNavTarget && Math.hypot(inputX, inputZ) < 0.01) {
       const dx = clickNavTarget[0] - pos.x;
@@ -520,59 +569,84 @@ export function Player() {
       if (dist <= 0.65) {
         setClickNavTarget(null);
         setIsMoving(false);
+        speed.current = 0;
       } else {
-        const navSpeed = 15.0;
-        vx = (dx / dist) * navSpeed;
-        vz = (dz / dist) * navSpeed;
+        const navSpeed = HOMECRAFT_RUN;
+        speed.current += (navSpeed - speed.current) * (1 - Math.exp(-delta * 10));
+        vx = (dx / dist) * speed.current;
+        vz = (dz / dist) * speed.current;
         if (!isMoving) setIsMoving(true);
-
-        if (visualRef.current) {
-          const targetRot = Math.atan2(vx, vz);
-          let diff = targetRot - visualRef.current.rotation.y;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          visualRef.current.rotation.y += diff * Math.min(1, delta * 25);
-        }
+        turnTowards(dx, dz, delta);
       }
     } else {
-      // 7. Manual WASD Movement
+      // 7. Manual Movement with Homecraft 3D Physics & Exponential Damping
       const inputLen = Math.hypot(inputX, inputZ);
       const moving = inputLen > 0.01;
       if (moving !== isMoving) {
         setIsMoving(moving);
       }
 
-      if (moving) {
-        const normX = inputX / inputLen;
-        const normZ = inputZ / inputLen;
+      // Normalize input direction so diagonals don't travel faster
+      const normInputX = moving ? inputX / inputLen : 0;
+      const normInputZ = moving ? inputZ / inputLen : 0;
+      const dirX = forwardX * normInputZ + rightX * normInputX;
+      const dirZ = forwardZ * normInputZ + rightZ * normInputX;
 
-        // Snappy, energetic Minecraft movement speeds
-        const baseSpeed = isFlying
-          ? (isRunning ? 32.0 : 20.0)
-          : (isRunning ? 18.5 : 12.0);
+      if (isFlying || mode.current === 'fly') {
+        // Creative Flight Mode: 3D exponential velocity damping (Homecraft player.js:633-638)
+        const top = isRunning ? HOMECRAFT_FLY_FAST : HOMECRAFT_FLY;
+        const k = 1 - Math.exp(-delta * 6);
 
-        vx = (forwardX * normZ + rightX * normX) * baseSpeed;
-        vz = (forwardZ * normZ + rightZ * normX) * baseSpeed;
+        flightVel.current.x += (dirX * top - flightVel.current.x) * k;
+        flightVel.current.z += (dirZ * top - flightVel.current.z) * k;
 
-        // Smooth shortest-arc rotation towards movement direction
-        if (visualRef.current) {
-          const targetRot = Math.atan2(vx, vz);
-          let diff = targetRot - visualRef.current.rotation.y;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          visualRef.current.rotation.y += diff * Math.min(1, delta * 25);
+        if (!moving && Math.hypot(flightVel.current.x, flightVel.current.z) < 0.04) {
+          flightVel.current.x = 0;
+          flightVel.current.z = 0;
         }
 
+        vx = flightVel.current.x;
+        vz = flightVel.current.z;
+
+        const horizSpeed = Math.hypot(vx, vz);
+        if (horizSpeed > 0.3) {
+          turnTowards(vx, vz, delta);
+        }
+      } else {
+        // Ground & Airborne Mode: Homecraft speed acceleration (player.js:587)
+        const mag = Math.min(1, inputLen);
+        const targetSpeed = mag * (isRunning ? HOMECRAFT_RUN : HOMECRAFT_WALK);
+        const rate = mode.current === 'air' ? 4 : 10;
+        speed.current += (targetSpeed - speed.current) * (1 - Math.exp(-delta * rate));
+
+        if (!moving && speed.current < 0.04) {
+          speed.current = 0;
+        }
+
+        if (moving) {
+          lastHeading.current.x = dirX;
+          lastHeading.current.z = dirZ;
+          turnTowards(dirX, dirZ, delta);
+        }
+
+        vx = lastHeading.current.x * speed.current;
+        vz = lastHeading.current.z * speed.current;
+
         // Footstep audio when running on ground
-        if (isGrounded && !isFlying) {
+        if (isGrounded && speed.current > 0.8) {
           footstepTimer.current += delta;
-          const interval = isRunning ? 0.18 : 0.26;
+          const interval = isRunning ? 0.22 : 0.32;
           if (footstepTimer.current >= interval) {
             playFootstep('grass');
             footstepTimer.current = 0;
           }
         }
       }
+    }
+
+    // In first person mode, avatar faces exact look direction (Homecraft player.js:677)
+    if (isFirstPerson && visualRef.current) {
+      visualRef.current.rotation.y = cameraYaw.current + Math.PI;
     }
 
     // 8. Exact Homecraft Flight Kinematics vs Ground Gravity & Jump Kinematics
@@ -586,17 +660,19 @@ export function Player() {
 
       const wantY = (keys.current['Space'] ? 1 : 0) - (isShift || isCtrl ? 1 : 0);
       const k = 1 - Math.exp(-delta * 6);
-      vy.current += (wantY * HOMECRAFT_CLIMB - vy.current) * k;
+      flightVel.current.y += (wantY * HOMECRAFT_CLIMB - flightVel.current.y) * k;
 
-      if (wantY === 0 && Math.abs(vy.current) < 0.05) {
-        vy.current = 0;
+      if (wantY === 0 && Math.abs(flightVel.current.y) < 0.05) {
+        flightVel.current.y = 0;
       }
+      vy.current = flightVel.current.y;
 
       // Auto-land: flying down onto solid ground lands into ground mode (Homecraft player.js:648-650)
       if ((isShift || isCtrl) && isGrounded && pos.y < 12.0) {
         setIsFlying(false);
         mode.current = 'ground';
         vy.current = 0;
+        flightVel.current.set(0, 0, 0);
         playFlyToggle(false);
         playLand();
       }
