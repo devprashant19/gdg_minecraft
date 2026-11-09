@@ -306,3 +306,25 @@ export function playPortalWarp() {
   osc2.stop(ctx.currentTime + 0.9);
 }
 
+export function playBorderHit() {
+  const ctx = initAudioContext();
+  if (!ctx || !masterGain || !useGame.getState().soundOn) return;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(160, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(75, ctx.currentTime + 0.16);
+
+  gain.gain.setValueAtTime(0.2, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.16);
+
+  osc.connect(gain);
+  gain.connect(masterGain);
+
+  osc.start();
+  osc.stop(ctx.currentTime + 0.16);
+}
+
+

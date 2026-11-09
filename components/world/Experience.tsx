@@ -107,7 +107,7 @@ export default function Experience({ onRendered }: ExperienceProps) {
       <div className="fixed inset-0 z-0 bg-[#4988e0] overflow-hidden">
         <Canvas
           flat
-          shadows
+          shadows={{ type: THREE.PCFShadowMap }}
           dpr={tierConfig.dpr}
           gl={{
             antialias: false,

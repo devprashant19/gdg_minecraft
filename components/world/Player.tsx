@@ -20,6 +20,7 @@ import {
   playLand,
   playFlyToggle,
   playFootstep,
+  playBorderHit,
 } from '@/lib/sound';
 
 // Module-scoped reusable scratch vectors to eliminate GC allocations
@@ -60,6 +61,7 @@ export function Player() {
   const isGroundedRef = useRef(true);
   const ctrlDownTime = useRef(0);
   const jumpCooldown = useRef(0);
+  const lastBorderSoundTime = useRef(0);
 
   // Homecraft Camera Rig smoothed state
   const cameraYaw = useRef(0); // 0 = viewing towards -Z (North into island)
@@ -558,6 +560,53 @@ export function Player() {
         // Guarantees snappy 0.45s jump airtime with immediate weighted descent!
         const gravity = vy > 0 ? 34.0 : 48.0;
         vy = Math.max(-28.0, vy - gravity * delta);
+      }
+    }
+
+    // 8.5. World Border Hard Boundaries (Radial Perimeter & Height Ceiling/Floor)
+    const MAX_BORDER_RADIUS = 27.2;
+    const MAX_CEILING_Y = 25.5;
+    const MIN_FLOOR_Y = 3.6;
+
+    const horizDist = Math.hypot(pos.x, pos.z);
+    let clampedX = pos.x;
+    let clampedZ = pos.z;
+    let clampedY = pos.y;
+    let hitBorder = false;
+
+    // Horizontal Radial Island Border
+    if (horizDist > MAX_BORDER_RADIUS) {
+      const angle = Math.atan2(pos.z, pos.x);
+      clampedX = Math.cos(angle) * MAX_BORDER_RADIUS;
+      clampedZ = Math.sin(angle) * MAX_BORDER_RADIUS;
+      // Dampen outward velocity
+      const outwardSpeed = vx * Math.cos(angle) + vz * Math.sin(angle);
+      if (outwardSpeed > 0) {
+        vx -= outwardSpeed * Math.cos(angle);
+        vz -= outwardSpeed * Math.sin(angle);
+      }
+      hitBorder = true;
+    }
+
+    // Height Ceiling Border
+    if (pos.y > MAX_CEILING_Y) {
+      clampedY = MAX_CEILING_Y;
+      vy = Math.min(0, vy);
+      hitBorder = true;
+    }
+
+    // Ocean Floor / Water Surface Boundary
+    if (pos.y < MIN_FLOOR_Y) {
+      clampedY = MIN_FLOOR_Y;
+      vy = Math.max(0, vy);
+      hitBorder = true;
+    }
+
+    if (hitBorder) {
+      bodyRef.current.setTranslation({ x: clampedX, y: clampedY, z: clampedZ }, true);
+      if (performance.now() - lastBorderSoundTime.current > 600) {
+        playBorderHit();
+        lastBorderSoundTime.current = performance.now();
       }
     }
 
