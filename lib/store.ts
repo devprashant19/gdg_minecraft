@@ -31,6 +31,11 @@ export interface GameState {
   soundOn: boolean;
   reducedMotion: boolean;
   tourSeen: boolean;
+  mouseAimLocked: boolean;
+  isFlying: boolean;
+  isFirstPerson: boolean;
+  clickNavTarget: [number, number, number] | null;
+  timeMood: 'day' | 'sunset' | 'night';
 }
 
 export interface GameActions {
@@ -51,6 +56,14 @@ export interface GameActions {
   setReducedMotion: (reduced: boolean) => void;
   markTourSeen: () => void;
   setPortalTransition: (transition: boolean) => void;
+  setMouseAimLocked: (locked: boolean) => void;
+  setIsFlying: (flying: boolean) => void;
+  toggleFlying: () => void;
+  setIsFirstPerson: (firstPerson: boolean) => void;
+  toggleFirstPerson: () => void;
+  setClickNavTarget: (target: [number, number, number] | null) => void;
+  setTimeMood: (mood: 'day' | 'sunset' | 'night') => void;
+  cycleTimeMood: () => void;
 }
 
 export const selectControlsDisabled = (s: GameState): boolean =>
@@ -69,11 +82,16 @@ export const useGame = create<GameState & GameActions>()(
         portalTransition: false,
         pendingNav: null,
         visited: [],
-        timeOfDay: 0.72,
+        timeOfDay: 0.5,
         qualityTier: 'medium',
         soundOn: false,
         reducedMotion: false,
         tourSeen: false,
+        mouseAimLocked: false,
+        isFlying: false,
+        isFirstPerson: false,
+        clickNavTarget: null,
+        timeMood: 'day',
 
         enterZone: (id) => set({ nearbyStation: id }),
 
@@ -134,6 +152,23 @@ export const useGame = create<GameState & GameActions>()(
         setReducedMotion: (reducedMotion) => set({ reducedMotion }),
         markTourSeen: () => set({ tourSeen: true }),
         setPortalTransition: (portalTransition) => set({ portalTransition }),
+        setMouseAimLocked: (mouseAimLocked) => set({ mouseAimLocked }),
+        setIsFlying: (isFlying) => set({ isFlying }),
+        toggleFlying: () => set((state) => ({ isFlying: !state.isFlying })),
+        setIsFirstPerson: (isFirstPerson) => set({ isFirstPerson }),
+        toggleFirstPerson: () => set((state) => ({ isFirstPerson: !state.isFirstPerson })),
+        setClickNavTarget: (clickNavTarget) => set({ clickNavTarget }),
+        setTimeMood: (timeMood) => {
+          const todMap = { day: 0.5, sunset: 0.74, night: 0.08 };
+          set({ timeMood, timeOfDay: todMap[timeMood] });
+        },
+        cycleTimeMood: () => {
+          const modes = ['day', 'sunset', 'night'] as const;
+          const current = get().timeMood;
+          const next = modes[(modes.indexOf(current) + 1) % modes.length] ?? 'day';
+          const todMap: Record<'day' | 'sunset' | 'night', number> = { day: 0.5, sunset: 0.74, night: 0.08 };
+          set({ timeMood: next, timeOfDay: todMap[next] });
+        },
       }),
       {
         name: 'island-prefs',
@@ -147,3 +182,4 @@ export const useGame = create<GameState & GameActions>()(
     )
   )
 );
+
