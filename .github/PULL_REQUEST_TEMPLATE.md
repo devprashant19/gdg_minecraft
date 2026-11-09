@@ -16,9 +16,12 @@ Fixes #(issue number if applicable)
 
 ---
 
-## Architectural & Legal Invariants Checked
-- [ ] **Zero Mojang Copyrighted Assets**: No proprietary Minecraft textures, audio files, or models were added.
-- [ ] **$0/month Cost**: No paid external APIs, persistent microservices, or proprietary backends added.
+## Architectural & Invariants Checked
+- [ ] **Zero Mojang Copyrighted Assets**: No proprietary Minecraft textures, audio files, or models were added (all textures procedural or CC0).
+- [ ] **3D Frame Invariants**:
+  - [ ] No `setState()` calls inside Three.js `useFrame()`.
+  - [ ] No object allocations (e.g. `new THREE.Vector3()`) created per frame.
+  - [ ] 3D binary assets are Draco/GLTF compressed (under 3MB per file).
 - [ ] **Dual-Mode Parity**: Features added or modified in 3D are fully accessible in the 2D fallback view (`/2d`).
 - [ ] **Voxel Surface Coordinate Math**: Character colliders, station spawn points, and meshes maintain the `[y, y+1]` grid invariant (`pos.y = groundY + 1.85`).
 

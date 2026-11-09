@@ -11,7 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  check:
+  # ─── 1. CODE INTEGRITY & TYPES ───────────────────────────────────────────
+  integrity:
+    name: Typecheck, Lint & Content Schema
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,22 +31,87 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck
+      - name: TypeScript Typecheck
         run: pnpm typecheck
 
-      - name: Lint
+      - name: ESLint Check
         run: pnpm lint
 
-      - name: Validate content schemas
+      - name: Validate Event Content Schemas (Zod)
         run: pnpm check:content
 
-      - name: Run unit tests
+  # ─── 2. 3D ASSET & SECRET GUARD ──────────────────────────────────────────
+  asset-guard:
+    name: 3D Asset Size & Secret Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for oversized binary assets (> 3MB)
+        run: |
+          OVERSIZED=$(find public/ -type f -size +3M 2>/dev/null || true)
+          if [ -n "$OVERSIZED" ]; then
+            echo "ERROR: The following assets exceed 3MB limit:"
+            echo "$OVERSIZED"
+            exit 1
+          fi
+
+      - name: Scan for committed secrets or private keys
+        run: |
+          ! grep -rE '(sb_secret_[a-zA-Z0-9_-]{20,}|service_role|POSTGRES_PASSWORD=[a-zA-Z0-9_]{6,})' \
+            --exclude-dir={.git,.next,node_modules} \
+            --exclude='.env.example' \
+            .
+
+  # ─── 3. UNIT & GAME ENGINE TESTS ─────────────────────────────────────────
+  test:
+    name: Unit & Physics Math Tests (Vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Vitest Unit Tests
         run: pnpm test
 
-      - name: Build Next.js application
+  # ─── 4. PRODUCTION BUILD & CLIENT LEAK AUDIT ─────────────────────────────
+  build:
+    name: Next.js Production Build
+    needs: [integrity, test]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Compile Next.js Production Build
         run: pnpm build
         env:
-          NEXT_PUBLIC_SITE_URL: https://crafthacks.dev
+          NEXT_PUBLIC_SITE_URL: https://hackathon.nith.ac.in
 
-      - name: Verify no secrets in client bundle
+      - name: Verify no server secrets in client bundle
         run: "! grep -rE 'sb_secret_|service_role' .next/static"
