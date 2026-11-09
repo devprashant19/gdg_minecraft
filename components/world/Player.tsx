@@ -20,7 +20,6 @@ import {
   playLand,
   playFlyToggle,
   playFootstep,
-  playBorderHit,
 } from '@/lib/sound';
 
 // Module-scoped reusable scratch vectors to eliminate GC allocations
@@ -29,6 +28,15 @@ const _camTarget = new THREE.Vector3();
 const _targetFocus = new THREE.Vector3();
 const _raycaster = new THREE.Raycaster();
 const _mouseNDC = new THREE.Vector2();
+
+// Exact Homecraft Physics Constants (from desktop/sayonce/homecraft/engine/world/player.js:19)
+const HOMECRAFT_JUMP = 6.4;
+const HOMECRAFT_GRAVITY = 19.0;
+const HOMECRAFT_CLIMB = 6.0;
+const HOMECRAFT_WALK = 6.8;
+const HOMECRAFT_RUN = 12.0;
+const HOMECRAFT_FLY = 12.0;
+const HOMECRAFT_FLY_FAST = 20.0;
 
 export function Player() {
   const bodyRef = useRef<RapierRigidBody>(null);
@@ -61,7 +69,10 @@ export function Player() {
   const isGroundedRef = useRef(true);
   const ctrlDownTime = useRef(0);
   const jumpCooldown = useRef(0);
-  const lastBorderSoundTime = useRef(0);
+
+  // Exact Homecraft Player Physics State (mode: 'ground' | 'air' | 'fly')
+  const mode = useRef<'ground' | 'air' | 'fly'>('ground');
+  const vy = useRef(0);
 
   // Homecraft Camera Rig smoothed state
   const cameraYaw = useRef(0); // 0 = viewing towards -Z (North into island)
@@ -76,6 +87,17 @@ export function Player() {
   const prevPointer = useRef({ x: 0, y: 0 });
   const pointerStart = useRef({ x: 0, y: 0 });
 
+  // Synchronize mode.current and vy when isFlying changes (e.g. from UI buttons or hotkeys)
+  useEffect(() => {
+    if (isFlying) {
+      mode.current = 'fly';
+      vy.current = 0;
+    } else if (mode.current === 'fly') {
+      mode.current = isGroundedRef.current ? 'ground' : 'air';
+      vy.current = 0;
+    }
+  }, [isFlying]);
+
   const respawn = useCallback(() => {
     if (bodyRef.current) {
       bodyRef.current.setTranslation(
@@ -84,6 +106,8 @@ export function Player() {
       );
       bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
       setIsFlying(false);
+      mode.current = 'ground';
+      vy.current = 0;
       yawGoal.current = 0;
       pitchGoal.current = 0.24;
       cameraYaw.current = 0;
@@ -208,6 +232,8 @@ export function Player() {
         e.preventDefault();
         const nextFlight = !useGame.getState().isFlying;
         setIsFlying(nextFlight);
+        mode.current = nextFlight ? 'fly' : (isGroundedRef.current ? 'ground' : 'air');
+        vy.current = 0;
         playFlyToggle(nextFlight);
         return;
       }
@@ -231,9 +257,31 @@ export function Player() {
         return;
       }
 
-      // Space key: Only triggers jumping on ground.
-      // Deliberately REMOVED double-space flight trigger so spamming jump
-      // NEVER causes accidental flight! Flight is toggled exclusively via F key or HUD button.
+      // Space key: Exact Homecraft Double-Tap Flight & Ground Jump (Homecraft input.js:42-45 & player.js:165)
+      if (e.code === 'Space' && !e.repeat && stage === 'play' && !disabled) {
+        e.preventDefault();
+        const now = performance.now();
+        if (now - lastSpaceTime.current < 300) {
+          // Double-tap Space within 300ms toggles flight
+          lastSpaceTime.current = -1e9;
+          const willFly = !useGame.getState().isFlying;
+          setIsFlying(willFly);
+          mode.current = willFly ? 'fly' : (isGroundedRef.current ? 'ground' : 'air');
+          vy.current = 0;
+          playFlyToggle(willFly);
+        } else {
+          lastSpaceTime.current = now;
+          // Single tap: jump ONLY in ground mode (locks out spamming in air)
+          if (mode.current === 'ground' && !useGame.getState().isFlying) {
+            mode.current = 'air';
+            vy.current = HOMECRAFT_JUMP;
+            jumpCooldown.current = 0.22;
+            playJump();
+          }
+        }
+        keys.current['Space'] = true;
+        return;
+      }
 
       keys.current[e.code] = true;
 
@@ -355,7 +403,9 @@ export function Player() {
 
         // Arrived at destination standPoint
         if (dist <= 0.85) {
-          bodyRef.current.setLinvel({ x: 0, y: linvel.y, z: 0 }, true);
+          bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          vy.current = 0;
+          mode.current = 'ground';
           if (visualRef.current) {
             visualRef.current.rotation.y = Math.atan2(
               targetStation.position[0] - pos.x,
@@ -372,7 +422,7 @@ export function Player() {
         const speed = 22.0;
         const vx = (dx / dist) * speed;
         const vz = (dz / dist) * speed;
-        bodyRef.current.setLinvel({ x: vx, y: linvel.y, z: vz }, true);
+        bodyRef.current.setLinvel({ x: vx, y: -0.5, z: vz }, true);
 
         if (visualRef.current) {
           const targetRot = Math.atan2(vx, vz);
@@ -403,7 +453,7 @@ export function Player() {
 
     // 3. Frozen Controls Check
     if (disabled) {
-      bodyRef.current.setLinvel({ x: 0, y: isFlying ? 0 : linvel.y, z: 0 }, true);
+      bodyRef.current.setLinvel({ x: 0, y: isFlying ? 0 : vy.current, z: 0 }, true);
       if (isMoving) setIsMoving(false);
       return;
     }
@@ -458,7 +508,6 @@ export function Player() {
 
     let vx = 0;
     let vz = 0;
-    let vy = linvel.y;
 
     const isRunning = keys.current['ShiftLeft'] || keys.current['ShiftRight'];
 
@@ -526,44 +575,57 @@ export function Player() {
       }
     }
 
-    // 8. Flight Kinematics vs Ground Jump Kinematics
-    if (isFlying) {
-      // Creative Flight: vertical climb and descent
+    // 8. Exact Homecraft Flight Kinematics vs Ground Gravity & Jump Kinematics
+    if (isFlying || mode.current === 'fly') {
+      // Creative Flight: vertical climb and descent (Homecraft player.js:633-648)
       const isShift = keys.current['ShiftLeft'] || keys.current['ShiftRight'];
-      const isCtrl = keys.current['ControlLeft'] || keys.current['ControlRight'] || keys.current['KeyC'];
+      const isCtrl =
+        keys.current['ControlLeft'] ||
+        keys.current['ControlRight'] ||
+        keys.current['KeyC'];
 
-      if (keys.current['Space']) {
-        vy = 18.0; // CLIMB UP
-      } else if (isShift || isCtrl) {
-        vy = -18.0; // DESCEND DOWN (via Shift, Ctrl, or C) - works whether moving or still!
-        // Auto-land if player touches solid ground while descending
-        if (isGrounded && pos.y < 9.0) {
-          setIsFlying(false);
-          playFlyToggle(false);
-          vy = 0;
-        }
-      } else {
-        vy = 0; // Hover, gravity neutralized
+      const wantY = (keys.current['Space'] ? 1 : 0) - (isShift || isCtrl ? 1 : 0);
+      const k = 1 - Math.exp(-delta * 6);
+      vy.current += (wantY * HOMECRAFT_CLIMB - vy.current) * k;
+
+      if (wantY === 0 && Math.abs(vy.current) < 0.05) {
+        vy.current = 0;
+      }
+
+      // Auto-land: flying down onto solid ground lands into ground mode (Homecraft player.js:648-650)
+      if ((isShift || isCtrl) && isGrounded && pos.y < 12.0) {
+        setIsFlying(false);
+        mode.current = 'ground';
+        vy.current = 0;
+        playFlyToggle(false);
+        playLand();
       }
     } else {
-      // Standard Ground Physics: Authentic Minecraft gravity and jumping
-      if (keys.current['Space'] && isGrounded && linvel.y <= 0.8) {
-        // Crisp 8.5 m/s impulse: height 1.15m, tight 0.45s airtime
-        vy = 8.5;
-        jumpCooldown.current = 0.22; // Lock grounded state for 220ms so jump achieves full height without re-triggering
-        playJump();
-      } else if (isGrounded && !keys.current['Space']) {
-        // Ground snap / adherence: keeps player firmly grounded on downhill terraces
-        vy = -2.0;
-      } else if (!isGrounded) {
-        // Explicit delta-based gravity: 34 m/s^2 on rise, 48 m/s^2 on fall
-        // Guarantees snappy 0.45s jump airtime with immediate weighted descent!
-        const gravity = vy > 0 ? 34.0 : 48.0;
-        vy = Math.max(-28.0, vy - gravity * delta);
+      // Exact Homecraft Ground & Air Gravity State Machine (Homecraft player.js:165, 599-604)
+      if (mode.current === 'ground') {
+        if (!isGrounded) {
+          // Stepped off a ledge or slope
+          mode.current = 'air';
+          vy.current = -0.5;
+        } else {
+          // Snug ground adherence on slopes/steps
+          vy.current = -1.0;
+        }
+      } else if (mode.current === 'air') {
+        // Apply Homecraft Gravity: vy -= GRAVITY * dt (19.0 m/s^2)
+        vy.current -= HOMECRAFT_GRAVITY * delta;
+        if (vy.current < -24.0) vy.current = -24.0; // Terminal velocity
+
+        // Solid landing: falling downwards and touching solid ground
+        if (vy.current <= 0 && isGrounded) {
+          mode.current = 'ground';
+          vy.current = 0;
+          playLand();
+        }
       }
     }
 
-    // 8.5. World Border Hard Boundaries (Radial Perimeter & Height Ceiling/Floor)
+    // 8.5. Invisible World Boundaries (Radial Perimeter & Height Ceiling/Floor)
     const MAX_BORDER_RADIUS = 27.2;
     const MAX_CEILING_Y = 25.5;
     const MIN_FLOOR_Y = 3.6;
@@ -591,26 +653,25 @@ export function Player() {
     // Height Ceiling Border
     if (pos.y > MAX_CEILING_Y) {
       clampedY = MAX_CEILING_Y;
-      vy = Math.min(0, vy);
+      vy.current = Math.min(0, vy.current);
       hitBorder = true;
     }
 
     // Ocean Floor / Water Surface Boundary
     if (pos.y < MIN_FLOOR_Y) {
       clampedY = MIN_FLOOR_Y;
-      vy = Math.max(0, vy);
+      vy.current = Math.max(0, vy.current);
+      if (mode.current === 'air') {
+        mode.current = 'ground';
+      }
       hitBorder = true;
     }
 
     if (hitBorder) {
       bodyRef.current.setTranslation({ x: clampedX, y: clampedY, z: clampedZ }, true);
-      if (performance.now() - lastBorderSoundTime.current > 600) {
-        playBorderHit();
-        lastBorderSoundTime.current = performance.now();
-      }
     }
 
-    bodyRef.current.setLinvel({ x: vx, y: vy, z: vz }, true);
+    bodyRef.current.setLinvel({ x: vx, y: vy.current, z: vz }, true);
 
     // 9. Camera Rig with Homecraft Exponential Damping
     if (stage === 'play') {
