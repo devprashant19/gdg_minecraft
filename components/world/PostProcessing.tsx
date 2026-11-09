@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import {
   EffectComposer,
   Bloom,
-  N8AO,
   GodRays,
   HueSaturation,
   BrightnessContrast,
@@ -26,17 +25,13 @@ export function PostProcessing({ bloomIntensity = 0.9, sunMesh }: PostProcessing
   const qualityTier = useGame((s) => s.qualityTier);
   const tierConfig = TIER_CONFIGS[qualityTier];
 
-  return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
-      {/* Soft Contact Shadows (N8AO) */}
-      {tierConfig.enableAO && (
-        <N8AO
-          aoRadius={1.2}
-          intensity={2.5}
-          halfRes={tierConfig.halfResAO}
-        />
-      )}
+  // Note: Ambient Occlusion is baked directly into the voxel terrain vertex colors
+  // (vAO in Island.tsx via 3-neighbor AO), exactly like Minecraft & Homecraft.
+  // Screen-space N8AO is disabled because N8AOPostPass has renderTarget texture array
+  // incompatibilities with modern Three.js and causes severe GPU lag on laptops.
 
+  return (
+    <EffectComposer multisampling={0}>
       {/* Emissive Selective Bloom */}
       {tierConfig.enableBloom && (
         <Bloom
@@ -50,10 +45,10 @@ export function PostProcessing({ bloomIntensity = 0.9, sunMesh }: PostProcessing
       {tierConfig.enableGodRays && sunMesh && (
         <GodRays
           sun={sunMesh}
-          samples={30}
-          density={0.9}
+          samples={12}
+          density={0.8}
           decay={0.93}
-          weight={0.4}
+          weight={0.3}
         />
       )}
 
@@ -63,8 +58,8 @@ export function PostProcessing({ bloomIntensity = 0.9, sunMesh }: PostProcessing
       <ToneMapping mode={ToneMappingMode.AGX} />
       <Vignette offset={0.3} darkness={0.45} />
 
-      {/* Subpixel Morphological Anti-Aliasing (SMAA) */}
-      <SMAA />
+      {/* Subpixel Morphological Anti-Aliasing (SMAA on high tier only) */}
+      {qualityTier === 'high' && <SMAA />}
     </EffectComposer>
   );
 }
