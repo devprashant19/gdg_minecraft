@@ -52,6 +52,7 @@ export function Player() {
   const playerTarget = useGame((s) => s.playerTarget);
   const arrive = useGame((s) => s.arrive);
   const open = useGame((s) => s.open);
+  const enterZone = useGame((s) => s.enterZone);
   const reducedMotion = useGame((s) => s.reducedMotion);
   const setMouseAimLocked = useGame((s) => s.setMouseAimLocked);
 
@@ -62,7 +63,6 @@ export function Player() {
   const clickNavTarget = useGame((s) => s.clickNavTarget);
   const setClickNavTarget = useGame((s) => s.setClickNavTarget);
 
-  const travelTimer = useRef(0);
   const lastSpaceTime = useRef(-1e9);
   const wasAirborne = useRef(false);
   const footstepTimer = useRef(0);
@@ -358,10 +358,73 @@ export function Player() {
     };
   }, [gl, disabled, stage, respawn, setIsFlying, toggleFirstPerson, setClickNavTarget]);
 
-  // Reset travel timer whenever target changes
+  // Immediate Shortcut Teleportation to Station
+  const teleportToStation = useCallback((stationId: string) => {
+    if (!bodyRef.current) return;
+    const targetStation = stations.find((s) => s.id === stationId);
+    if (!targetStation) return;
+
+    const [tx, ty, tz] = targetStation.standPoint;
+    const [sx, , sz] = targetStation.position;
+
+    // Teleport player physics body directly in front of the station
+    bodyRef.current.setTranslation({ x: tx, y: ty, z: tz }, true);
+    bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
+
+    // Turn visual facing directly towards the landmark
+    const lookAngle = Math.atan2(sx - tx, sz - tz);
+    if (visualRef.current) {
+      visualRef.current.rotation.y = lookAngle;
+    }
+
+    // Reset dynamics and exit flight mode
+    setIsFlying(false);
+    mode.current = 'ground';
+    vy.current = 0;
+    speed.current = 0;
+    flightVel.current.set(0, 0, 0);
+    setIsMoving(false);
+    setClickNavTarget(null);
+
+    // Camera placed behind player looking towards the station
+    const camYaw = lookAngle + Math.PI;
+    yawGoal.current = camYaw;
+    pitchGoal.current = 0.22;
+    distGoal.current = 5.2;
+    cameraYaw.current = camYaw;
+    cameraPitch.current = 0.22;
+    cameraDist.current = 5.2;
+    focus.current.set(tx, ty + 1.25, tz);
+
+    if (isFirstPerson) {
+      _camPos.set(tx, ty + 1.62, tz);
+      const cp = Math.cos(0.22);
+      _camTarget.set(
+        tx - Math.sin(camYaw) * cp,
+        ty + 1.62 + Math.sin(0.22),
+        tz - Math.cos(camYaw) * cp
+      );
+      camera.position.copy(_camPos);
+      camera.lookAt(_camTarget);
+    } else {
+      const camX = tx + Math.sin(camYaw) * Math.cos(0.22) * 5.2;
+      const camY = ty + 1.25 + Math.sin(0.22) * 5.2;
+      const camZ = tz + Math.cos(camYaw) * Math.cos(0.22) * 5.2;
+      camera.position.set(camX, camY, camZ);
+      camera.lookAt(focus.current);
+    }
+
+    enterZone(targetStation.id as SectionId);
+    arrive();
+    open(targetStation.id as SectionId);
+  }, [camera, enterZone, arrive, open, setIsFlying, setClickNavTarget, isFirstPerson]);
+
+  // Execute shortcut teleport immediately on target change
   useEffect(() => {
-    travelTimer.current = 0;
-  }, [playerTarget]);
+    if (playerTarget) {
+      teleportToStation(playerTarget);
+    }
+  }, [playerTarget, teleportToStation]);
 
   useFrame((state, delta) => {
     if (!bodyRef.current) return;
@@ -391,103 +454,10 @@ export function Player() {
       return;
     }
 
-    // 2. Fast-Travel / Waypoint Loop Auto-Walk
+    // 2. Shortcut Instant Teleportation Guard
     if (playerTarget) {
-      const targetStation = stations.find((s) => s.id === playerTarget);
-      if (targetStation) {
-        const [tx, ty, tz] = targetStation.standPoint;
-        const dx = tx - pos.x;
-        const dz = tz - pos.z;
-        const dist = Math.hypot(dx, dz);
-
-        // Cancel auto-walk if player presses any movement key
-        const userInterrupted =
-          keys.current['KeyW'] ||
-          keys.current['KeyA'] ||
-          keys.current['KeyS'] ||
-          keys.current['KeyD'] ||
-          keys.current['Space'] ||
-          keys.current['ArrowUp'] ||
-          keys.current['ArrowDown'] ||
-          keys.current['ArrowLeft'] ||
-          keys.current['ArrowRight'];
-
-        if (userInterrupted) {
-          arrive();
-          return;
-        }
-
-        travelTimer.current += delta;
-
-        // Fallback: Timeout (>4s) or reducedMotion -> instant teleport
-        if (reducedMotion || travelTimer.current >= 4.0) {
-          bodyRef.current.setTranslation({ x: tx, y: ty, z: tz }, true);
-          bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          vy.current = 0;
-          mode.current = 'ground';
-          speed.current = 0;
-          flightVel.current.set(0, 0, 0);
-          if (visualRef.current) {
-            visualRef.current.rotation.y = Math.atan2(
-              targetStation.position[0] - tx,
-              targetStation.position[2] - tz
-            );
-          }
-          arrive();
-          open(targetStation.id as SectionId);
-          return;
-        }
-
-        // Arrived at destination standPoint
-        if (dist <= 0.85) {
-          bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true);
-          vy.current = 0;
-          mode.current = 'ground';
-          speed.current = 0;
-          flightVel.current.set(0, 0, 0);
-          if (visualRef.current) {
-            visualRef.current.rotation.y = Math.atan2(
-              targetStation.position[0] - pos.x,
-              targetStation.position[2] - pos.z
-            );
-          }
-          setIsMoving(false);
-          arrive();
-          open(targetStation.id as SectionId);
-          return;
-        }
-
-        // Auto-walk towards target at fast travel speed
-        const waypointSpeed = 22.0;
-        const vx = (dx / dist) * waypointSpeed;
-        const vz = (dz / dist) * waypointSpeed;
-        bodyRef.current.setLinvel({ x: vx, y: -0.5, z: vz }, true);
-
-        if (visualRef.current) {
-          const targetRot = Math.atan2(vx, vz);
-          let diff = targetRot - visualRef.current.rotation.y;
-          while (diff < -Math.PI) diff += Math.PI * 2;
-          while (diff > Math.PI) diff -= Math.PI * 2;
-          visualRef.current.rotation.y += diff * Math.min(1, delta * 25);
-        }
-        if (!isMoving) setIsMoving(true);
-
-        // Smooth camera follow during station travel
-        _targetFocus.set(pos.x, pos.y + 1.25, pos.z);
-        focus.current.lerp(_targetFocus, 1 - Math.exp(-delta * 20));
-        const k = 1 - Math.exp(-delta * 20);
-        cameraYaw.current += (yawGoal.current - cameraYaw.current) * k;
-        cameraPitch.current += (pitchGoal.current - cameraPitch.current) * k;
-        cameraDist.current += (distGoal.current - cameraDist.current) * k;
-
-        const camX = focus.current.x + Math.sin(cameraYaw.current) * Math.cos(cameraPitch.current) * cameraDist.current;
-        const camY = focus.current.y + Math.sin(cameraPitch.current) * cameraDist.current;
-        const camZ = focus.current.z + Math.cos(cameraYaw.current) * Math.cos(cameraPitch.current) * cameraDist.current;
-        _camPos.set(camX, camY, camZ);
-        camera.position.copy(_camPos);
-        camera.lookAt(focus.current);
-        return;
-      }
+      teleportToStation(playerTarget);
+      return;
     }
 
     // 3. Frozen Controls Check
